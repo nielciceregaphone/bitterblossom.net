@@ -4,8 +4,6 @@ title: madeline's website
 
 # Hi, i'm Madeline
 
-<marquee scrollamount="4"><font face="Courier New, monospace">✧ welcome to my domain &gt;:) ✧ have a look around ✧ add the rss feed ✧ keep the secrets a secret ✧</font></marquee>
-
 Welcome to my domain >:) This site contains many fun things to explore and look at, from games, to images, blog posts, and random bullshit.
 
 ## Brief
