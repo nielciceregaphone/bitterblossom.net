@@ -152,11 +152,11 @@ items.sort((a, b) => (a < b ? 1 : -1))
 const rows = items.map((r) => r.split('\t'))
 
 // /blog/ index
-let bc = '<section class="box">\n<h1>blog</h1>\n<ul class="post-list">\n'
+let bc = '<section class="box">\n<h1>blog</h1>\n<p class="post-list">\n'
 for (const [date, title, slug] of rows) {
-  bc += `<li><time datetime="${date}">${date}</time> - <a href="/blog/${slug}/">${htmlesc(title)}</a></li>\n`
+  bc += `<time datetime="${date}">${date}</time> - <a href="/blog/${slug}/">${htmlesc(title)}</a><br>\n`
 }
-bc += '</ul>\n</section>\n'
+bc += '</p>\n</section>\n'
 emit('blog', default_desc, bc, `${dist}/blog/index.html`)
 
 // RSS 2.0 feed
