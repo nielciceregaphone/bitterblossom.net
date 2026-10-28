@@ -71,18 +71,22 @@ const body = (lines) => {
   return out.map((l) => l + '\n').join('')
 }
 
-// literal @TITLE@/@DESCRIPTION@/@UPDATED@ substitution in a template
+// literal @TITLE@/@DESCRIPTION@/@UPDATED@/@MONO@ substitution in a template
 const updated = new Date().toISOString().slice(0, 10) // build date, UTC
+const mono = 'Comic Mono, Consolas, Menlo, Monaco, Lucida Console, monospace'
 const tmpl = (t, title, desc) => {
-  const s = t.split('@TITLE@').join(title).split('@DESCRIPTION@').join(desc).split('@UPDATED@').join(updated)
+  const s = t.split('@TITLE@').join(title).split('@DESCRIPTION@').join(desc).split('@UPDATED@').join(updated).split('@MONO@').join(mono)
   return s.endsWith('\n') ? s : s + '\n'
 }
 const write = (outfile, text) => {
   fs.mkdirSync(path.dirname(outfile), {recursive: true})
   fs.writeFileSync(outfile, text)
 }
+// code gets the monospace face too, via a <font> inside each <code> (pages only, not the feed)
+const monoCode = (html) =>
+  html.replace(/<code([^>]*)>/g, `<code$1><font face="${mono}">`).replace(/<\/code>/g, '</font></code>')
 const emit = (title, desc, content, outfile) =>
-  write(outfile, tmpl(hdr, title, desc) + content + tmpl(ftr, title, desc))
+  write(outfile, tmpl(hdr, title, desc) + monoCode(content) + tmpl(ftr, title, desc))
 
 // *.md files in a dir, sorted by name; [] if the dir is missing
 const mdFiles = (dir) =>
