@@ -1,5 +1,4 @@
-// static site generator: a node port of the old render-blog.sh
-// src/ (markdown + templates) + public/ (static files) -> dist/
+// static site generator: src/ (markdown + templates) + public/ (static files) -> dist/
 import fs from 'node:fs'
 import path from 'node:path'
 import {micromark} from 'micromark'
@@ -103,8 +102,7 @@ for (const f of mdFiles(`${src}/pages`)) {
   const title = frontmatter(lines, 'title') || slug
   const desc = frontmatter(lines, 'description') || default_desc
   // center a leading # title to match the other pages
-  const html = md(body(lines)).replace(/^<h1>(.*)<\/h1>\n/, '<center><h1>$1</h1></center>\n')
-  const content = `<section class="box">\n${html}</section>\n`
+  const content = md(body(lines)).replace(/^<h1>(.*)<\/h1>\n/, '<center><h1>$1</h1></center>\n')
   emit(htmlesc(title), htmlesc(desc), content, `${dist}/${slug === 'about' ? '' : slug + '/'}index.html`)
 }
 
@@ -114,12 +112,12 @@ if (niche.length > 0) {
   let nc = '<center><h1>niche</h1></center>\n'
   for (const tag of ['games', 'shows', 'movies', 'music']) {
     const label = tag === 'music' ? 'cool songs' : `cool ${tag}`
-    const entries = niche.filter((l) => frontmatter(l, 'tag').replace(/[A-Z]/g, (c) => c.toLowerCase()).replace(/[^a-z]/g, '') === tag)
+    const entries = niche.filter((l) => frontmatter(l, 'tag').toLowerCase().replace(/[^a-z]/g, '') === tag)
     if (entries.length === 0) continue
-    nc += `<section class="niche-card">\n<h2 class="niche-tag">${label}</h2>\n`
+    nc += `<h2>${label}</h2>\n`
     for (const l of entries) {
       const title = frontmatter(l, 'title') || 'untitled'
-      nc += `<details class="niche-item">\n<summary class="niche-label">${htmlesc(title)}</summary>\n`
+      nc += `<details>\n<summary>${htmlesc(title)}</summary>\n`
       // cap cover art size with the plain html width attribute
       nc += md(body(l)).replaceAll('<img ', '<img width="128" ')
       const rating = frontmatter(l, 'rating')
@@ -128,49 +126,48 @@ if (niche.length > 0) {
         const units = Math.min(10, Math.max(0, Math.trunc((parseFloat(rating) || 0) * 2 + 0.5)))
         const full = Math.floor(units / 2), half = units % 2
         const stars = '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(5 - full - half)
-        nc += `<p class="rating">rating: <font color="#e0559a" size="4">${stars}</font> <small>(${htmlesc(rating)} / 5)</small></p>\n`
+        nc += `<p>rating: <font color="#e0559a" size="4">${stars}</font> <small>(${htmlesc(rating)} / 5)</small></p>\n`
       }
       nc += '</details>\n'
     }
-    nc += '</section>\n'
   }
   emit('niche', default_desc, nc, `${dist}/niche/index.html`)
 }
 
 // blog posts: src/blog/posts/<slug>.md -> /blog/<slug>/index.html
-const items = [] // "date\ttitle\tslug" rows, like the old items file
+const posts = []
 for (const f of mdFiles(`${src}/blog/posts`)) {
   const slug = slugOf(f)
   const lines = readLines(f)
   const title = frontmatter(lines, 'title') || slug
   const date = frontmatter(lines, 'date')
   const desc = frontmatter(lines, 'description') || default_desc
+  const html = md(body(lines))
   const etitle = htmlesc(title)
   const content =
-    '<article class="box post">\n' +
+    '<article>\n' +
     `<center>\n<h1>${etitle}</h1>\n` +
-    (date ? `<p class="post-date"><small><time datetime="${date}">${date}</time></small></p>\n` : '') +
+    (date ? `<p><small><time datetime="${date}">${date}</time></small></p>\n` : '') +
     '</center>\n' +
-    md(body(lines)) +
+    html +
     '</article>\n' +
-    '<hr>\n<p class="back"><a href="/blog/">&lt; all posts</a></p>\n'
+    '<hr>\n<p><a href="/blog/">&lt; all posts</a></p>\n'
   emit(etitle, htmlesc(desc), content, `${dist}/blog/${slug}/index.html`)
-  items.push(`${date || '0000-00-00'}\t${title}\t${slug}`)
+  posts.push({key: `${date || '0000-00-00'}\t${title}\t${slug}`, date: date || '0000-00-00', title, slug, desc, html})
 }
-// newest first: plain byte-order descending, like `sort -r`
-items.sort((a, b) => (a < b ? 1 : -1))
-const rows = items.map((r) => r.split('\t'))
+// newest first: plain byte-order descending on date, title, slug
+posts.sort((a, b) => (a.key < b.key ? 1 : -1))
 
 // /blog/ index
-let bc = '<section class="box">\n<center><h1>blog</h1></center>\n<ul class="post-list">\n'
-for (const [date, title, slug] of rows) {
+let bc = '<center><h1>blog</h1></center>\n<ul>\n'
+for (const {date, title, slug} of posts) {
   bc += `<li><time datetime="${date}">${date}</time> - <a href="/blog/${slug}/">${htmlesc(title)}</a></li>\n`
 }
-bc += '</ul>\n</section>\n'
+bc += '</ul>\n'
 emit('blog', default_desc, bc, `${dist}/blog/index.html`)
 
 // RSS 2.0 feed
-const buildDate = rfc822(rows.length ? rows[0][0] : '') || rfc822('1970-01-01')
+const buildDate = rfc822(posts.length ? posts[0].date : '') || rfc822('1970-01-01')
 let feed =
   '<?xml version="1.0" encoding="UTF-8"?>\n' +
   '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">\n' +
@@ -181,12 +178,10 @@ let feed =
   '<language>en</language>\n' +
   `<lastBuildDate>${buildDate}</lastBuildDate>\n` +
   `<atom:link href="${baseurl}/feed.xml" rel="self" type="application/rss+xml"/>\n`
-for (const [date, title, slug] of rows) {
-  const lines = readLines(`${src}/blog/posts/${slug}.md`)
-  const desc = frontmatter(lines, 'description') || default_desc
+for (const {date, title, slug, desc, html} of posts) {
   const link = `${baseurl}/blog/${slug}/`
-  // trailing newlines dropped (old `$(...)`), and ]]> split so CDATA can't end early
-  const html = md(body(lines)).replace(/\n+$/, '').replace(/]]>/g, ']]]]><![CDATA[>')
+  // ]]> is split so the CDATA can't end early
+  const cdata = html.replace(/\n+$/, '').replace(/]]>/g, ']]]]><![CDATA[>')
   const pd = rfc822(date)
   feed +=
     '<item>\n' +
@@ -195,7 +190,7 @@ for (const [date, title, slug] of rows) {
     `<guid isPermaLink="true">${link}</guid>\n` +
     (pd ? `<pubDate>${pd}</pubDate>\n` : '') +
     `<description>${xmlesc(desc)}</description>\n` +
-    `<content:encoded><![CDATA[${html}]]></content:encoded>\n` +
+    `<content:encoded><![CDATA[${cdata}]]></content:encoded>\n` +
     '</item>\n'
 }
 feed += '</channel>\n</rss>\n'
