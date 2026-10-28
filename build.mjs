@@ -101,14 +101,16 @@ for (const f of mdFiles(`${src}/pages`)) {
   const lines = readLines(f)
   const title = frontmatter(lines, 'title') || slug
   const desc = frontmatter(lines, 'description') || default_desc
-  const content = `<section class="box">\n${md(body(lines))}</section>\n`
+  // center a leading # title to match the other pages
+  const html = md(body(lines)).replace(/^<h1>(.*)<\/h1>\n/, '<center><h1>$1</h1></center>\n')
+  const content = `<section class="box">\n${html}</section>\n`
   emit(htmlesc(title), htmlesc(desc), content, `${dist}/${slug === 'about' ? '' : slug + '/'}index.html`)
 }
 
 // niche page: one section per tag, a click-to-open <details> per entry
 const niche = mdFiles(`${src}/niche`).map(readLines)
 if (niche.length > 0) {
-  let nc = '<h1>niche</h1>\n'
+  let nc = '<center><h1>niche</h1></center>\n'
   for (const tag of ['games', 'shows', 'movies', 'music']) {
     const label = tag === 'music' ? 'cool songs' : `cool ${tag}`
     const entries = niche.filter((l) => frontmatter(l, 'tag').replace(/[A-Z]/g, (c) => c.toLowerCase()).replace(/[^a-z]/g, '') === tag)
@@ -139,8 +141,9 @@ for (const f of mdFiles(`${src}/blog/posts`)) {
   const etitle = htmlesc(title)
   const content =
     '<article class="box post">\n' +
-    `<h1>${etitle}</h1>\n` +
+    `<center>\n<h1>${etitle}</h1>\n` +
     (date ? `<p class="post-date"><small><time datetime="${date}">${date}</time></small></p>\n` : '') +
+    '</center>\n' +
     md(body(lines)) +
     '</article>\n' +
     '<hr>\n<p class="back"><a href="/blog/">&lt; all posts</a></p>\n'
@@ -152,11 +155,11 @@ items.sort((a, b) => (a < b ? 1 : -1))
 const rows = items.map((r) => r.split('\t'))
 
 // /blog/ index
-let bc = '<section class="box">\n<h1>blog</h1>\n<p class="post-list">\n'
+let bc = '<section class="box">\n<center><h1>blog</h1></center>\n<ul class="post-list">\n'
 for (const [date, title, slug] of rows) {
-  bc += `<time datetime="${date}">${date}</time> - <a href="/blog/${slug}/">${htmlesc(title)}</a><br>\n`
+  bc += `<li><time datetime="${date}">${date}</time> - <a href="/blog/${slug}/">${htmlesc(title)}</a></li>\n`
 }
-bc += '</p>\n</section>\n'
+bc += '</ul>\n</section>\n'
 emit('blog', default_desc, bc, `${dist}/blog/index.html`)
 
 // RSS 2.0 feed
