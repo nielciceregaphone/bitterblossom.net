@@ -105,43 +105,26 @@ for (const f of mdFiles(`${src}/pages`)) {
   emit(htmlesc(title), htmlesc(desc), content, `${dist}/${slug === 'about' ? '' : slug + '/'}index.html`)
 }
 
-// niche page: one card per tag, radio + label + panel per entry
+// niche page: one section per tag, a click-to-open <details> per entry
 const niche = mdFiles(`${src}/niche`).map(readLines)
 if (niche.length > 0) {
-  let nc = '<div class="niche-grid">\n'
+  let nc = '<h1>niche</h1>\n'
   for (const tag of ['games', 'shows', 'movies', 'music']) {
     const label = tag === 'music' ? 'cool songs' : `cool ${tag}`
     const entries = niche.filter((l) => frontmatter(l, 'tag').replace(/[A-Z]/g, (c) => c.toLowerCase()).replace(/[^a-z]/g, '') === tag)
     if (entries.length === 0) continue
-    nc += `<article class="niche-card"><div class="niche-tag">${label}</div><div class="niche-body">\n`
-    entries.forEach((_, i) => {
-      nc += `<input class="niche-radio" type="radio" name="niche-${tag}" id="niche-${tag}-${i}">\n`
-    })
-    nc += '<div class="niche-titles">\n'
-    entries.forEach((l, i) => {
-      const title = frontmatter(l, 'title') || 'untitled'
-      nc += `<label class="niche-label" for="niche-${tag}-${i}">${htmlesc(title)}</label>\n`
-    })
-    nc += '</div><div class="niche-panels">\n'
+    nc += `<section class="niche-card">\n<h2 class="niche-tag">${label}</h2>\n`
     for (const l of entries) {
-      nc += '<section class="niche-panel">\n' + md(body(l))
+      const title = frontmatter(l, 'title') || 'untitled'
+      nc += `<details class="niche-item">\n<summary class="niche-label">${htmlesc(title)}</summary>\n`
+      // cap cover art size with the plain html width attribute
+      nc += md(body(l)).replaceAll('<img ', '<img width="128" ')
       const rating = frontmatter(l, 'rating')
-      if (rating) {
-        // rating out of 5 -> 0..10 half-star units
-        const units = Math.min(10, Math.max(0, Math.trunc((parseFloat(rating) || 0) * 2 + 0.5)))
-        nc += `<div class="stars" title="${htmlesc(rating)} / 5">\n`
-        for (let i = 1; i <= 5; i++) {
-          const c = i * 2 <= units ? 'star full' : i * 2 - 1 <= units ? 'star half' : 'star'
-          nc += `<span class="${c}"></span>\n`
-        }
-        nc += `<span class="rating-text">${htmlesc(rating)} / 5</span>\n`
-        nc += '</div>\n'
-      }
-      nc += '</section>\n'
+      if (rating) nc += `<p class="rating">rating: <b>${htmlesc(rating)} / 5</b></p>\n`
+      nc += '</details>\n'
     }
-    nc += '</div></div></article>\n'
+    nc += '</section>\n'
   }
-  nc += '</div>\n'
   emit('niche', default_desc, nc, `${dist}/niche/index.html`)
 }
 
@@ -157,10 +140,10 @@ for (const f of mdFiles(`${src}/blog/posts`)) {
   const content =
     '<article class="box post">\n' +
     `<h1>${etitle}</h1>\n` +
-    (date ? `<p class="post-date">${date}</p>\n` : '') +
+    (date ? `<p class="post-date"><small><time datetime="${date}">${date}</time></small></p>\n` : '') +
     md(body(lines)) +
     '</article>\n' +
-    '<p class="back"><a href="/blog/">&lt; all posts</a></p>\n'
+    '<hr>\n<p class="back"><a href="/blog/">&lt; all posts</a></p>\n'
   emit(etitle, htmlesc(desc), content, `${dist}/blog/${slug}/index.html`)
   items.push(`${date || '0000-00-00'}\t${title}\t${slug}`)
 }
@@ -171,7 +154,7 @@ const rows = items.map((r) => r.split('\t'))
 // /blog/ index
 let bc = '<section class="box">\n<h1>blog</h1>\n<ul class="post-list">\n'
 for (const [date, title, slug] of rows) {
-  bc += `<li><time>${date}</time><a href="/blog/${slug}/">${htmlesc(title)}</a></li>\n`
+  bc += `<li><time datetime="${date}">${date}</time> - <a href="/blog/${slug}/">${htmlesc(title)}</a></li>\n`
 }
 bc += '</ul>\n</section>\n'
 emit('blog', default_desc, bc, `${dist}/blog/index.html`)
