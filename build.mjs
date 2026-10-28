@@ -72,9 +72,10 @@ const body = (lines) => {
   return out.map((l) => l + '\n').join('')
 }
 
-// literal @TITLE@/@DESCRIPTION@ substitution in a template
+// literal @TITLE@/@DESCRIPTION@/@UPDATED@ substitution in a template
+const updated = new Date().toISOString().slice(0, 10) // build date, UTC
 const tmpl = (t, title, desc) => {
-  const s = t.split('@TITLE@').join(title).split('@DESCRIPTION@').join(desc)
+  const s = t.split('@TITLE@').join(title).split('@DESCRIPTION@').join(desc).split('@UPDATED@').join(updated)
   return s.endsWith('\n') ? s : s + '\n'
 }
 const write = (outfile, text) => {
@@ -122,7 +123,13 @@ if (niche.length > 0) {
       // cap cover art size with the plain html width attribute
       nc += md(body(l)).replaceAll('<img ', '<img width="128" ')
       const rating = frontmatter(l, 'rating')
-      if (rating) nc += `<p class="rating">rating: <b>${htmlesc(rating)} / 5</b></p>\n`
+      if (rating) {
+        // rating out of 5 -> 0..10 half-star units, drawn as text stars
+        const units = Math.min(10, Math.max(0, Math.trunc((parseFloat(rating) || 0) * 2 + 0.5)))
+        const full = Math.floor(units / 2), half = units % 2
+        const stars = '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(5 - full - half)
+        nc += `<p class="rating">rating: <font color="#e0559a" size="4">${stars}</font> <small>(${htmlesc(rating)} / 5)</small></p>\n`
+      }
       nc += '</details>\n'
     }
     nc += '</section>\n'
