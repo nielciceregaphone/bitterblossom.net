@@ -130,7 +130,7 @@ if (niche.length > 0) {
         const units = Math.min(10, Math.max(0, Math.trunc((parseFloat(rating) || 0) * 2 + 0.5)))
         const full = Math.floor(units / 2), half = units % 2
         const stars = '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(5 - full - half)
-        nc += `<p>rating: <font color="#e0559a" size="4">${stars}</font> <small>(${htmlesc(rating)} / 5)</small></p>\n`
+        nc += `<p>rating: <font class="stars" color="#e0559a" size="4">${stars}</font> <small>(${htmlesc(rating)} / 5)</small></p>\n`
       }
       nc += '</details>\n'
     }

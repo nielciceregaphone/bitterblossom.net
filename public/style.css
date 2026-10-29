@@ -1,0 +1,126 @@
+/* the html attributes in the templates stay as a no-css fallback, this overrides them */
+
+:root {
+  color-scheme: light;
+  --bg: #e6e6fa;
+  --text: #2a1f4a;
+  --link: #6b2fa0;
+  --vlink: #a0337a;
+  --alink: #e0559a;
+  --rule: #9b7fd1;
+  --code-bg: #d9d3f2;
+  --stars: #e0559a;
+}
+/* dark: follows the system unless the toggle picked light */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #1a1428;
+    --text: #e6e6fa;
+    --link: #b89cff;
+    --vlink: #e08cc4;
+    --alink: #ff7ab8;
+    --rule: #6b4fa0;
+    --code-bg: #261d3a;
+    --stars: #ff7ab8;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1a1428;
+  --text: #e6e6fa;
+  --link: #b89cff;
+  --vlink: #e08cc4;
+  --alink: #ff7ab8;
+  --rule: #6b4fa0;
+  --code-bg: #261d3a;
+  --stars: #ff7ab8;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 8px 16px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+a:link { color: var(--link); }
+a:visited { color: var(--vlink); }
+a:active { color: var(--alink); }
+hr {
+  border: 0;
+  height: 2px;
+  background: var(--rule);
+  color: var(--rule);
+}
+
+/* readable line length, and no extra indent from the template's blockquote */
+main {
+  display: block;
+  max-width: 44em;
+  margin: 0 auto;
+}
+main > blockquote { margin: 0; }
+
+/* quotes written in posts */
+main > blockquote blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 3px solid var(--rule);
+}
+
+/* photos never wider than the page */
+img {
+  max-width: 100%;
+  height: auto;
+}
+/* pixel art stays crisp */
+header img, footer img { image-rendering: pixelated; }
+
+/* code scrolls inside its own box instead of the whole page */
+pre {
+  background: var(--code-bg);
+  padding: 0.75em 1em;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.35;
+}
+:not(pre) > code {
+  background: var(--code-bg);
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+}
+
+table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+th, td {
+  border: 1px solid var(--rule);
+  padding: 0.3em 0.6em;
+}
+
+summary { cursor: pointer; }
+.stars { color: var(--stars); }
+
+/* theme toggle, top right */
+#theme-toggle {
+  position: absolute;
+  top: 8px;
+  right: 16px;
+  font: inherit;
+  color: var(--link);
+  background: none;
+  border: 0;
+  padding: 0.25em;
+  cursor: pointer;
+}
+#theme-toggle:hover { text-decoration: underline; }
+#theme-toggle[hidden] { display: none; }
+/* on phones, give the button its own row above the header */
+@media (max-width: 600px) {
+  body { padding-top: 2.25em; }
+}
