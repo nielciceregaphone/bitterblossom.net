@@ -10,7 +10,6 @@ import {gfmTaskListItem, gfmTaskListItemHtml} from 'micromark-extension-gfm-task
 
 const BASE_URL = 'https://bitterblossom.net'
 const SITE_DESC = "madeline's blog"
-const WORDS_PER_MINUTE = 200
 const IMG_WIDTH = 340 // widest photo that still fits a 360px phone next to the default body margin
 const SRC = 'src'
 const DIST = 'dist'
@@ -75,7 +74,6 @@ const write = (file, text) => {
 const stripTags = (html) => html.replace(/<[^>]*>/g, '')
 const decode = (s) => s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
 const wordCount = (html) => (decode(stripTags(html)).match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) || []).length
-const readingTime = (words) => `${Math.max(1, Math.round(words / WORDS_PER_MINUTE))} min read`
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 const num = (n) => n.toLocaleString('en-US')
 
@@ -159,15 +157,14 @@ const fitToScreen = (html) =>
     .replaceAll('<pre>', '<pre wrap>')
 
 // --- navigation ---
-// one list drives the menu, the shortcuts dialog and the accesskeys so they can't disagree
+// one list drives the menu links and their accesskeys
 
 const KEYS = [
-  {key: 'a', label: 'about', href: '/'},
+  {key: 'a', label: 'index', href: '/'},
   {key: 'b', label: 'blog', href: '/blog/'},
   {key: 'n', label: 'niche', href: '/niche/'},
   {key: 'r', label: 'rss', href: '/feed.xml', abbr: 'really simple syndication'},
   {key: 's', label: 'search', info: 'jumps to the search box on the blog page'},
-  {key: 'k', label: 'keyboard shortcuts', info: 'opens this window'},
   {key: 'p', label: 'previous', info: 'on a blog post or niche page'},
   {key: 'x', label: 'next', info: 'on a blog post or niche page'}
 ]
@@ -184,12 +181,10 @@ const navItems = (current) =>
     })
     .join(' &middot;\n')
 
-const keyRows = () =>
-  KEYS.map(({key, label, info}) => `<tr><th scope="row"><kbd>${key}</kbd></th><td>${info ? `${label}, ${info}` : `go to ${label}`}</td></tr>`).join('\n')
 
 // --- templates ---
 
-const vars = {'@UPDATED@': new Date().toISOString().slice(0, 10), '@TAGLINE@': htmlesc(SITE_DESC), '@KEYS@': keyRows()}
+const vars = {'@TAGLINE@': htmlesc(SITE_DESC)}
 const template = (name) => fs.readFileSync(`${SRC}/templates/${name}.html`, 'utf8').replace(/\n?$/, '\n')
 const header = template('header')
 const footer = template('footer')
@@ -219,7 +214,7 @@ if (fs.existsSync('public')) fs.cpSync('public', DIST, {recursive: true})
 const posts = readDir(`${SRC}/blog/posts`).map(({slug, meta, body}) => {
   const html = md(body)
   const words = wordCount(html)
-  return {slug, title: meta.title || slug, date: meta.date || '', blurb: meta.description || '', desc: meta.description || SITE_DESC, html, words, minutes: readingTime(words)}
+  return {slug, title: meta.title || slug, date: meta.date || '', blurb: meta.description || '', desc: meta.description || SITE_DESC, html, words}
 })
 
 // newest first, ties broken by title then slug (all descending)
@@ -241,7 +236,7 @@ const dateTag = (date) => (date ? `<time datetime="${date}">${shortDate(date)}</
 
 // one <li> per post: date, link, reading time, description. `peek` ties the link to its hover preview
 const postItem = (p, peek) =>
-  `<li><p>${dateTag(p.date)} <a href="${postUrl(p)}"${peek ? ` interestfor="peek-${p.slug}"` : ''}>${htmlesc(p.title)}</a> <small>(${p.minutes})</small>` +
+  `<li><p>${dateTag(p.date)} <a href="${postUrl(p)}"${peek ? ` interestfor="peek-${p.slug}"` : ''}>${htmlesc(p.title)}</a>` +
   (p.blurb ? `<br>\n<small>${htmlesc(p.blurb)}</small>` : '') +
   '</p></li>\n'
 
@@ -249,21 +244,15 @@ const postItem = (p, peek) =>
 const postList = (list, peek = false) =>
   `<ol reversed start="${posts.length - posts.indexOf(list[0])}">\n${list.map((p) => postItem(p, peek)).join('')}</ol>\n`
 
-// free-standing pages: src/pages/<slug>.md -> /<slug>/, except about which is the homepage
+// free-standing pages: src/pages/<slug>.md -> /<slug>/, except index which is the homepage
 for (const {slug, meta, body} of readDir(`${SRC}/pages`)) {
-  const home = slug === 'about'
+  const home = slug === 'index'
   let content = shiftHeadings(md(body))
   if (home && posts.length) {
-    const totalWords = posts.reduce((sum, p) => sum + p.words, 0)
     content +=
       '<section>\n<h3>latest posts</h3>\n' +
       postList(posts.slice(0, 3)) +
-      `<p><a href="/blog/">all ${posts.length} posts</a></p>\n</section>\n` +
-      '<section>\n<h3>around here</h3>\n<dl>\n' +
-      `<dt>posts</dt>\n<dd>${posts.length}</dd>\n` +
-      `<dt>words written</dt>\n<dd>${num(totalWords)}</dd>\n` +
-      `<dt>reading time</dt>\n<dd>${readingTime(totalWords).replace(' read', '')} start to finish</dd>\n` +
-      '</dl>\n</section>\n'
+      `<p><a href="/blog/">all ${posts.length} posts</a></p>\n</section>\n`
   }
   page(home ? 'index.html' : `${slug}/index.html`, {title: htmlesc(meta.title || slug), desc: htmlesc(meta.description || SITE_DESC), content})
 }
@@ -344,9 +333,8 @@ posts.forEach((p, i) => {
       : ''
   const sibling = (post, rel, key, label) =>
     post ? `<li>${label}: <a href="${postUrl(post)}" rel="${rel}" accesskey="${key}">${htmlesc(post.title)}</a> <kbd>${key}</kbd></li>\n` : ''
-  const when = p.date ? `<time datetime="${p.date}">${p.date}</time> &middot; ` : ''
   const content =
-    `<article>\n<hgroup>\n<h2>${htmlesc(p.title)}</h2>\n<p>${when}${p.minutes}</p>\n</hgroup>\n` +
+    `<article>\n<hgroup>\n<h2>${htmlesc(p.title)}</h2>\n${p.date ? `<p><time datetime="${p.date}">${p.date}</time></p>\n` : ''}</hgroup>\n` +
     toc +
     fitToScreen(html) +
     '</article>\n' +
@@ -367,7 +355,7 @@ for (const [month, list] of months) {
 }
 for (const p of posts) {
   index += `<div id="peek-${p.slug}" popover="hint">\n<p><strong>${htmlesc(p.title)}</strong></p>\n`
-  index += `<p>${htmlesc(p.blurb || 'no description, just read it')}</p>\n<p><small>${p.minutes} &middot; ${num(p.words)} words</small></p>\n</div>\n`
+  index += `<p>${htmlesc(p.blurb || 'no description, just read it')}</p>\n<p><small>${num(p.words)} words</small></p>\n</div>\n`
 }
 page('blog/index.html', {title: 'blog', desc: htmlesc(SITE_DESC), content: index})
 
