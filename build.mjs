@@ -158,25 +158,23 @@ const KEYS = [
   {key: 'b', label: 'blog', href: '/blog/'},
   {key: 'n', label: 'niche', href: '/niche/'},
   {key: 'r', label: 'rss', href: '/feed.xml', abbr: 'really simple syndication'},
-  {key: 's', label: 'search this site', info: 'jumps to the search box'},
+  {key: 's', label: 'search', info: 'jumps to the search box on the blog page'},
   {key: 'k', label: 'keyboard shortcuts', info: 'opens this window'},
   {key: 'p', label: 'previous post', info: 'only on a blog post'},
   {key: 'x', label: 'next post', info: 'only on a blog post'}
 ]
 
-// `current` is the page being built, used for aria-current and a bold "you are here"
-const navItems = (current) => {
-  const link = ({key, label, href, abbr}) => {
-    const text = abbr ? `<abbr title="${abbr}">${label}</abbr>` : label
-    const here = href === current
-    const within = !here && href !== '/' && current.startsWith(href)
-    const mark = here ? ' aria-current="page"' : within ? ' aria-current="true"' : ''
-    return `<a href="${href}" accesskey="${key}"${mark}>${here ? `<strong>${text}</strong>` : text}</a>`
-  }
-  const items = KEYS.slice(0, 4).map((k) => `<li>${link(k)} <kbd>${k.key}</kbd></li>`)
-  items.push('<li><button type="button" commandfor="keys" command="show-modal" accesskey="k">keyboard shortcuts</button> <kbd>k</kbd></li>')
-  return items.join('\n')
-}
+// one line of links. `current` is the page being built: its own link (or its section's) goes bold
+const navItems = (current) =>
+  KEYS.filter((k) => k.href)
+    .map(({key, label, href, abbr}) => {
+      const text = abbr ? `<abbr title="${abbr}">${label}</abbr>` : label
+      const here = href === current
+      const within = !here && href !== '/' && current.startsWith(href)
+      const mark = here ? ' aria-current="page"' : within ? ' aria-current="true"' : ''
+      return `<a href="${href}" accesskey="${key}"${mark}>${here || within ? `<strong>${text}</strong>` : text}</a>`
+    })
+    .join(' &middot;\n')
 
 const keyRows = () =>
   KEYS.map(({key, label, info}) => `<tr><th scope="row"><kbd>${key}</kbd></th><td>${info ? `${label}, ${info}` : `go to ${label}`}</td></tr>`).join('\n')
@@ -220,8 +218,15 @@ const posts = readDir(`${SRC}/blog/posts`).map(({slug, meta, body}) => {
 const sortKey = (p) => `${p.date || '0000-00-00'}\t${p.title}\t${p.slug}`
 posts.sort((a, b) => (sortKey(a) < sortKey(b) ? 1 : -1))
 
-// no-js site search: post titles as <datalist> suggestions
-vars['@TITLES@'] = posts.map((p) => `<option value="${htmlesc(p.title)}"></option>`).join('\n')
+// no-js site search for the blog page: duckduckgo limited to this site, post titles as <datalist> suggestions
+const search =
+  '<search>\n<form action="https://duckduckgo.com/" method="get">\n' +
+  '<label for="q">search posts</label>\n' +
+  '<input id="q" type="search" name="q" list="titles" accesskey="s" placeholder="try a post title" required>\n' +
+  '<input type="hidden" name="sites" value="bitterblossom.net">\n' +
+  '<button type="submit">search</button>\n' +
+  `<datalist id="titles">\n${posts.map((p) => `<option value="${htmlesc(p.title)}"></option>`).join('\n')}\n</datalist>\n` +
+  '</form>\n</search>\n'
 
 const postUrl = (p) => `/blog/${p.slug}/`
 const dateTag = (date) => (date ? `<time datetime="${date}">${shortDate(date)}</time>` : '')
@@ -321,7 +326,7 @@ posts.forEach((p, i) => {
 
 // /blog/ index: a section per month, and a hover preview per post (chrome's interestfor, inert elsewhere)
 const months = Map.groupBy(posts, (p) => p.date.match(/^\d{4}-\d{2}/)?.[0] || '')
-let index = '<h2>blog</h2>\n'
+let index = '<h2>blog</h2>\n' + search
 for (const [month, list] of months) {
   const label = month ? `${monthName(month.slice(5))} ${month.slice(0, 4)}` : 'undated'
   index += `<section>\n<h3>${month ? `<time datetime="${month}">${label}</time>` : label}</h3>\n${postList(list, true)}</section>\n`
