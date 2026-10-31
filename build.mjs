@@ -179,7 +179,7 @@ const navItems = (current) =>
       const mark = here ? ' aria-current="page"' : within ? ' aria-current="true"' : ''
       return `<a href="${href}" accesskey="${key}"${mark}>${here || within ? `<strong>${text}</strong>` : text}</a>`
     })
-    .join(' &middot;\n')
+    .join(' //\n')
 
 
 // --- templates ---
