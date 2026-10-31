@@ -4,4 +4,4 @@ title: madeline's website
 
 # Welcome
 
-your intro goes here. replace this line with whatever you want on the homepage, it's plain markdown.
+Welcome to my site, bitterblossom.net - Here you will find random blog posts as well as half-witted reviews about my favorite games.
