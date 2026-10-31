@@ -315,7 +315,7 @@ if (niche.length) {
 // fills the recently played list from what it has logged out of navidrome
 
 const latestPost = (p) =>
-  '<section>\n<h3>latest post</h3>\n' +
+  '<section>\n<h3>latest blogpost</h3>\n' +
   `<p><a href="${postUrl(p)}">${htmlesc(p.title)}</a> ${dateTag(p.date)}` +
   (p.blurb ? `<br>\n<small>${htmlesc(p.blurb)}</small>` : '') +
   '</p>\n</section>\n'
@@ -329,7 +329,7 @@ const reviewCard = (n, i) =>
   '</p>\n</article>\n'
 
 const randomReview = () =>
-  `<section>\n<h3>random review</h3>\n<div data-reviews="${niche.length}">\n${niche.map(reviewCard).join('')}</div>\n</section>\n`
+  `<section>\n<h3>random nichepost</h3>\n<div data-reviews="${niche.length}">\n${niche.map(reviewCard).join('')}</div>\n</section>\n`
 
 const recentlyPlayed = '<section>\n<h3>recently played</h3>\n<ul id="recent-tracks">\n<li>nothing yet</li>\n</ul>\n</section>\n'
 
