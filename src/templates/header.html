@@ -13,7 +13,9 @@
 <body>
 <header>
   <hgroup>
-    <h1><a href="/"><img src="/assets/web/favicon.png" width="64" height="64" alt="madeline's avatar" title="hi :3"> bitterblossom.net</a></h1>
+    <!-- the logo and the name are separate links so the underline sits under the name only, not the gap.
+         align="middle" is the one presentational attribute here: html has no other way to centre text beside an image -->
+    <h1><a href="/" tabindex="-1" aria-hidden="true"><img src="/assets/web/favicon.png" width="64" height="64" alt="" title="hi :3" align="middle"></a> <a href="/">bitterblossom.net</a></h1>
     <p>@TAGLINE@</p>
   </hgroup>
   <nav aria-label="site">
