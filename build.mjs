@@ -210,7 +210,7 @@ fs.rmSync(DIST, {recursive: true, force: true})
 fs.mkdirSync(DIST, {recursive: true})
 if (fs.existsSync('public')) fs.cpSync('public', DIST, {recursive: true})
 
-// blog posts first: the header's search suggestions, the homepage and the index all need them
+// blog posts first: the blog page's search suggestions and the index need them
 const posts = readDir(`${SRC}/blog/posts`).map(({slug, meta, body}) => {
   const html = md(body)
   const words = wordCount(html)
@@ -247,13 +247,7 @@ const postList = (list, peek = false) =>
 // free-standing pages: src/pages/<slug>.md -> /<slug>/, except index which is the homepage
 for (const {slug, meta, body} of readDir(`${SRC}/pages`)) {
   const home = slug === 'index'
-  let content = shiftHeadings(md(body))
-  if (home && posts.length) {
-    content +=
-      '<section>\n<h3>latest posts</h3>\n' +
-      postList(posts.slice(0, 3)) +
-      `<p><a href="/blog/">all ${posts.length} posts</a></p>\n</section>\n`
-  }
+  const content = shiftHeadings(md(body))
   page(home ? 'index.html' : `${slug}/index.html`, {title: htmlesc(meta.title || slug), desc: htmlesc(meta.description || SITE_DESC), content})
 }
 
