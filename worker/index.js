@@ -1,31 +1,37 @@
 // bitterblossom.net worker. every page is a static file from dist/, served straight from the asset store;
-// only the homepage comes through here (run_worker_first in wrangler.jsonc). visitors still get plain html.
+// only the homepage and /art/* come through here (run_worker_first in wrangler.jsonc). visitors still get plain html.
 //
-// - fetch: on the homepage, keep one random review and fill in the recently played list
-// - scheduled (every minute): ask navidrome what's playing and log new songs to KV
+// - fetch /: keep one random nichepost and fill in the last played song (cover art included) in the header
+// - fetch /art/<id>: the last played song's cover, kept in KV so the page never links to navidrome itself
+// - scheduled (every minute): ask navidrome what's playing; when the song changes, save it and its cover
 //
 // config: vars NAVIDROME_URL and LISTENER in wrangler.jsonc; secrets NAVIDROME_USER, NAVIDROME_TOKEN and
 // NAVIDROME_SALT (subsonic token auth: token = md5(password + salt)); KV namespace bound as TRACKS
 
-const LIST_KEY = 'recent-tracks'
-const KEEP = 5
+const SONG_KEY = 'last-song'
+const ART_KEY = 'last-song-art'
+const ART_SIZE = 96 // fetched at 2x, shown at 48 so it stays sharp on phones
 
 const esc = (s) =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-// --- logging songs ---
+// --- navidrome ---
 
-// what LISTENER is playing right now according to navidrome, or null
-async function nowPlaying(env) {
+const subsonic = (env, endpoint, params = {}) => {
   const q = new URLSearchParams({
     u: env.NAVIDROME_USER,
     t: env.NAVIDROME_TOKEN,
     s: env.NAVIDROME_SALT,
     v: '1.16.1',
     c: 'bitterblossom.net',
-    f: 'json'
+    ...params
   })
-  const res = await fetch(`${env.NAVIDROME_URL}/rest/getNowPlaying?${q}`)
+  return fetch(`${env.NAVIDROME_URL}/rest/${endpoint}?${q}`)
+}
+
+// what LISTENER is playing right now according to navidrome, or null
+async function nowPlaying(env) {
+  const res = await subsonic(env, 'getNowPlaying', {f: 'json'})
   if (!res.ok) throw new Error(`navidrome answered ${res.status}`)
   const body = (await res.json())['subsonic-response']
   if (body?.status !== 'ok') throw new Error(`navidrome said ${body?.error?.message || 'no'}`)
@@ -37,24 +43,43 @@ async function nowPlaying(env) {
     title: entry.title || 'untitled',
     artist: entry.artist || '',
     album: entry.album || '',
+    cover: entry.coverArt || '',
     duration: entry.duration || 0, // seconds
     started: Date.now() - (entry.minutesAgo || 0) * 60_000 // navidrome only gives whole minutes
   }
 }
 
-// a song counts as new unless it's the same track that started within a couple of minutes of the logged one
+// the cover as {bytes, type}, or null if navidrome has none for it
+async function coverArt(env, id) {
+  const res = await subsonic(env, 'getCoverArt', {id, size: String(ART_SIZE), square: 'true'})
+  const type = res.headers.get('content-type') || ''
+  // errors come back as a subsonic xml/json body, not an image
+  if (!res.ok || !type.startsWith('image/')) return null
+  return {bytes: await res.arrayBuffer(), type}
+}
+
+// a song counts as new unless it's the same track that started within a couple of minutes of the saved one
 // (minutesAgo is rounded, so the same play can drift by a minute between checks)
 const samePlay = (a, b) => a && b && a.id === b.id && Math.abs(a.started - b.started) < 3 * 60_000
 
 async function record(env) {
   const song = await nowPlaying(env)
   if (!song) return
-  const list = (await env.TRACKS.get(LIST_KEY, 'json')) || []
-  if (samePlay(song, list[0])) return // only write when the song changes, KV writes are the scarce part
-  await env.TRACKS.put(LIST_KEY, JSON.stringify([song, ...list].slice(0, KEEP)))
+  const last = await env.TRACKS.get(SONG_KEY, 'json')
+  if (samePlay(song, last)) return // only write when the song changes, KV writes are the scarce part
+  // songs off the same album share a cover, so only fetch and save one when it isn't already there
+  song.hasArt = Boolean(song.cover && song.cover === last?.cover && last?.hasArt)
+  if (song.cover && !song.hasArt) {
+    const art = await coverArt(env, song.cover).catch(() => null)
+    if (art) {
+      await env.TRACKS.put(ART_KEY, art.bytes, {metadata: {id: song.cover, type: art.type}})
+      song.hasArt = true
+    }
+  }
+  await env.TRACKS.put(SONG_KEY, JSON.stringify(song))
 }
 
-// --- homepage ---
+// --- pages ---
 
 const ago = (ms) => {
   const min = Math.floor(ms / 60_000)
@@ -66,22 +91,25 @@ const ago = (ms) => {
   return `${days} day${days === 1 ? '' : 's'} ago`
 }
 
-// only the newest song can still be playing: anything older was cut off by the next one
-const trackItem = (t, i, now) => {
-  const playing = i === 0 && t.duration && now < t.started + t.duration * 1000
-  const when = playing
-    ? 'playing now'
-    : `<time datetime="${new Date(t.started).toISOString()}">${ago(now - t.started)}</time>`
+// the header box: cover on the left, then "playing now" or how long ago, the title and the artist
+const songCells = (song, now) => {
+  const playing = song.duration && now < song.started + song.duration * 1000
+  const when = playing ? 'playing now' : `last played <time datetime="${new Date(song.started).toISOString()}">${ago(now - song.started)}</time>`
+  const label = [song.title, song.artist, song.album].filter(Boolean).join(', ')
+  const cover = song.hasArt
+    ? `<td valign="top"><img src="/art/${encodeURIComponent(song.cover)}" width="48" height="48" alt="" title="${esc(label)}"></td>\n`
+    : ''
   return (
-    `<li><cite>${esc(t.title)}</cite>` +
-    (t.artist ? ` by ${esc(t.artist)}` : '') +
-    (t.album ? ` <small>(${esc(t.album)})</small>` : '') +
-    ` <small>${when}</small></li>\n`
+    '<tr>\n' +
+    cover +
+    `<td valign="top"><small>${when}</small><br>\n<cite>${esc(song.title)}</cite>` +
+    (song.artist ? `<br>\n<small>${esc(song.artist)}</small>` : '') +
+    '</td>\n</tr>\n'
   )
 }
 
 async function homepage(res, env) {
-  const tracks = (await env.TRACKS.get(LIST_KEY, 'json').catch(() => null)) || []
+  const song = await env.TRACKS.get(SONG_KEY, 'json').catch(() => null)
   const now = Date.now()
   let pick = 0
   let seen = 0
@@ -97,29 +125,38 @@ async function homepage(res, env) {
         else el.remove()
       }
     })
-    .on('#recent-tracks', {
+    .on('#now-playing', {
       element(el) {
-        if (tracks.length) el.setInnerContent('\n' + tracks.map((t, i) => trackItem(t, i, now)).join(''), {html: true})
+        if (song) el.setInnerContent('\n' + songCells(song, now), {html: true})
       }
     })
     .transform(res)
-  // the body changed per visit, so the asset's etag no longer describes it
+  // the body changes per visit, so the asset's etag no longer describes it
   const headers = new Headers(out.headers)
   headers.delete('etag')
   headers.set('cache-control', 'no-cache')
   return new Response(out.body, {status: out.status, headers})
 }
 
+// only the saved cover is served, so this can't be used to browse the rest of the library
+async function art(id, env) {
+  const {value, metadata} = await env.TRACKS.getWithMetadata(ART_KEY, 'arrayBuffer')
+  if (!value || metadata?.id !== id) return new Response('not found', {status: 404})
+  // the url carries the cover id, so a given url always means the same picture
+  return new Response(value, {headers: {'content-type': metadata.type, 'cache-control': 'public, max-age=86400'}})
+}
+
 export default {
   async fetch(request, env) {
-    const res = await env.ASSETS.fetch(request)
     const {pathname} = new URL(request.url)
+    if (pathname.startsWith('/art/')) return art(decodeURIComponent(pathname.slice(5)), env)
+    const res = await env.ASSETS.fetch(request)
     const html = (res.headers.get('content-type') || '').includes('text/html')
     if (pathname !== '/' || res.status !== 200 || !html) return res
     return homepage(res, env)
   },
 
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(record(env).catch((err) => console.error('recently played:', err.message)))
+    ctx.waitUntil(record(env).catch((err) => console.error('last played:', err.message)))
   }
 }
