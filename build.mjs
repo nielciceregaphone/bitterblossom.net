@@ -1,4 +1,5 @@
 // static site generator: src/ (markdown + templates) + public/ (static files) -> dist/
+// output is plain html, no css and no js
 import fs from 'node:fs'
 import path from 'node:path'
 import {micromark} from 'micromark'
@@ -7,16 +8,19 @@ import {gfmStrikethrough, gfmStrikethroughHtml} from 'micromark-extension-gfm-st
 import {gfmTable, gfmTableHtml} from 'micromark-extension-gfm-table'
 import {gfmTaskListItem, gfmTaskListItemHtml} from 'micromark-extension-gfm-task-list-item'
 
-const baseurl = 'https://bitterblossom.net'
-const feed_title = "madeline's blog"
-const default_desc = "madeline's blog"
+const BASE_URL = 'https://bitterblossom.net'
+const SITE_DESC = "madeline's blog"
+const MONO = 'Comic Mono, Consolas, Menlo, Monaco, Lucida Console, monospace'
+const SRC = 'src'
+const DIST = 'dist'
+const NICHE_TAGS = {games: 'cool games', shows: 'cool shows', movies: 'cool movies', music: 'cool songs'}
 
-const src = 'src'
-const dist = 'dist'
-const hdr = fs.readFileSync(`${src}/templates/header.html`, 'utf8')
-const ftr = fs.readFileSync(`${src}/templates/footer.html`, 'utf8')
+// --- helpers ---
 
-// same as `cmark-gfm --unsafe -e table -e strikethrough -e autolink -e tasklist`
+const htmlesc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+const xmlesc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+// github flavoured markdown, raw html allowed
 const md = (text) =>
   micromark(text, {
     allowDangerousHtml: true,
@@ -25,177 +29,160 @@ const md = (text) =>
     htmlExtensions: [gfmTableHtml(), gfmStrikethroughHtml(), gfmAutolinkLiteralHtml(), gfmTaskListItemHtml()]
   })
 
-const htmlesc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-const xmlesc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
-// YYYY-MM-DD -> "Sat, 08 Aug 2026 00:00:00 +0000"; '' if not a real date
-const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+// YYYY-MM-DD -> "Sat, 08 Aug 2026 00:00:00 +0000", or '' if it isn't a real date
 const rfc822 = (s) => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
-  if (!m) return ''
-  const [y, mo, d] = [+m[1], +m[2], +m[3]]
-  const t = new Date(0)
-  t.setUTCFullYear(y, mo - 1, d)
-  if (t.getUTCFullYear() !== y || t.getUTCMonth() !== mo - 1 || t.getUTCDate() !== d) return ''
-  return `${days[t.getUTCDay()]}, ${String(d).padStart(2, '0')} ${months[mo - 1]} ${m[1]} 00:00:00 +0000`
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return ''
+  const d = new Date(`${s}T00:00:00Z`)
+  if (isNaN(d) || d.toISOString().slice(0, 10) !== s) return ''
+  return d.toUTCString().replace('GMT', '+0000')
 }
 
-// files are read as lines (CRLF tolerated, no trailing empty line)
-const readLines = (file) => {
+// a markdown file with an optional leading `---` frontmatter block of `key: value` lines
+// (first value wins; an unclosed block swallows the whole file)
+const readMd = (file) => {
   const lines = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n').split('\n')
-  if (lines[lines.length - 1] === '') lines.pop()
-  return lines
-}
-const trim = (s) => s.replace(/^[ \t]+|[ \t]+$/g, '')
-
-// value of `key: value` in a leading --- block (first match wins, split on first ':')
-const frontmatter = (lines, k) => {
-  if (lines[0] !== '---') return ''
-  for (const line of lines.slice(1)) {
-    if (line === '---') break
-    const i = line.indexOf(':')
-    if (i > 0 && trim(line.slice(0, i)) === k) return trim(line.slice(i + 1))
-  }
-  return ''
-}
-// everything except the frontmatter block
-const body = (lines) => {
-  const out = []
-  let fm = false
-  lines.forEach((line, n) => {
-    if (n === 0 && line === '---') fm = true
-    else if (fm && line === '---') fm = false
-    else if (!fm) out.push(line)
-  })
-  return out.map((l) => l + '\n').join('')
-}
-
-// literal @TITLE@/@DESCRIPTION@/@UPDATED@/@MONO@ substitution in a template
-const updated = new Date().toISOString().slice(0, 10) // build date, UTC
-const mono = 'Comic Mono, Consolas, Menlo, Monaco, Lucida Console, monospace'
-const tmpl = (t, title, desc) => {
-  const s = t.split('@TITLE@').join(title).split('@DESCRIPTION@').join(desc).split('@UPDATED@').join(updated).split('@MONO@').join(mono)
-  return s.endsWith('\n') ? s : s + '\n'
-}
-const write = (outfile, text) => {
-  fs.mkdirSync(path.dirname(outfile), {recursive: true})
-  fs.writeFileSync(outfile, text)
-}
-// code gets the monospace face too, via a <font> inside each <code> (pages only, not the feed)
-const monoCode = (html) =>
-  html.replace(/<code([^>]*)>/g, `<code$1><font face="${mono}">`).replace(/<\/code>/g, '</font></code>')
-const emit = (title, desc, content, outfile) =>
-  write(outfile, tmpl(hdr, title, desc) + monoCode(content) + tmpl(ftr, title, desc))
-
-// *.md files in a dir, sorted by name; [] if the dir is missing
-const mdFiles = (dir) =>
-  fs.existsSync(dir)
-    ? fs.readdirSync(dir).filter((f) => f.endsWith('.md') && !f.startsWith('.')).sort().map((f) => path.join(dir, f))
-    : []
-const slugOf = (f) => path.basename(f, '.md')
-
-fs.rmSync(dist, {recursive: true, force: true})
-fs.mkdirSync(dist, {recursive: true})
-if (fs.existsSync('public')) fs.cpSync('public', dist, {recursive: true})
-
-// free-standing pages: src/pages/<slug>.md -> /<slug>/index.html (about -> /)
-for (const f of mdFiles(`${src}/pages`)) {
-  const slug = slugOf(f)
-  const lines = readLines(f)
-  const title = frontmatter(lines, 'title') || slug
-  const desc = frontmatter(lines, 'description') || default_desc
-  // center a leading # title to match the other pages
-  const content = md(body(lines)).replace(/^<h1>(.*)<\/h1>\n/, '<center><h1>$1</h1></center>\n')
-  emit(htmlesc(title), htmlesc(desc), content, `${dist}/${slug === 'about' ? '' : slug + '/'}index.html`)
-}
-
-// niche page: one section per tag, a click-to-open <details> per entry
-const niche = mdFiles(`${src}/niche`).map(readLines)
-if (niche.length > 0) {
-  let nc = '<center><h1>niche</h1></center>\n'
-  for (const tag of ['games', 'shows', 'movies', 'music']) {
-    const label = tag === 'music' ? 'cool songs' : `cool ${tag}`
-    const entries = niche.filter((l) => frontmatter(l, 'tag').toLowerCase().replace(/[^a-z]/g, '') === tag)
-    if (entries.length === 0) continue
-    nc += `<h2>${label}</h2>\n`
-    for (const l of entries) {
-      const title = frontmatter(l, 'title') || 'untitled'
-      nc += `<details>\n<summary>${htmlesc(title)}</summary>\n`
-      // cap cover art size with the plain html width attribute
-      nc += md(body(l)).replaceAll('<img ', '<img width="128" ')
-      const rating = frontmatter(l, 'rating')
-      if (rating) {
-        // rating out of 5 -> 0..10 half-star units, drawn as text stars
-        const units = Math.min(10, Math.max(0, Math.trunc((parseFloat(rating) || 0) * 2 + 0.5)))
-        const full = Math.floor(units / 2), half = units % 2
-        const stars = '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(5 - full - half)
-        nc += `<p>rating: <font color="#e0559a" size="4">${stars}</font> <small>(${htmlesc(rating)} / 5)</small></p>\n`
-      }
-      nc += '</details>\n'
+  if (lines.at(-1) === '') lines.pop()
+  const meta = {}
+  let start = 0
+  if (lines[0] === '---') {
+    const close = lines.indexOf('---', 1)
+    const end = close === -1 ? lines.length : close
+    start = close === -1 ? lines.length : close + 1
+    for (const line of lines.slice(1, end)) {
+      const i = line.indexOf(':')
+      const key = line.slice(0, i).trim()
+      if (i > 0 && !(key in meta)) meta[key] = line.slice(i + 1).trim()
     }
   }
-  emit('niche', default_desc, nc, `${dist}/niche/index.html`)
+  const body = lines.slice(start).map((l) => l + '\n').join('')
+  return {slug: path.basename(file, '.md'), meta, body}
 }
 
-// blog posts: src/blog/posts/<slug>.md -> /blog/<slug>/index.html
-const posts = []
-for (const f of mdFiles(`${src}/blog/posts`)) {
-  const slug = slugOf(f)
-  const lines = readLines(f)
-  const title = frontmatter(lines, 'title') || slug
-  const date = frontmatter(lines, 'date')
-  const desc = frontmatter(lines, 'description') || default_desc
-  const html = md(body(lines))
-  const etitle = htmlesc(title)
+// every *.md in a dir, sorted by filename; [] if the dir is missing
+const readDir = (dir) =>
+  fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter((f) => f.endsWith('.md') && !f.startsWith('.')).sort().map((f) => readMd(path.join(dir, f)))
+    : []
+
+const write = (file, text) => {
+  fs.mkdirSync(path.dirname(file), {recursive: true})
+  fs.writeFileSync(file, text)
+}
+
+// --- templates ---
+
+const vars = {'@UPDATED@': new Date().toISOString().slice(0, 10), '@MONO@': MONO}
+const template = (name) => fs.readFileSync(`${SRC}/templates/${name}.html`, 'utf8').replace(/\n?$/, '\n')
+const header = template('header')
+const footer = template('footer')
+const fill = (t, title, desc) =>
+  Object.entries({...vars, '@TITLE@': title, '@DESCRIPTION@': desc}).reduce((s, [k, v]) => s.replaceAll(k, v), t)
+
+// code gets the monospace face via a <font> inside each <code>
+const monoCode = (html) => html.replace(/<code([^>]*)>/g, `<code$1><font face="${MONO}">`).replace(/<\/code>/g, '</font></code>')
+
+// title and desc are already html-escaped
+const page = (file, title, desc, content) =>
+  write(`${DIST}/${file}`, fill(header, title, desc) + monoCode(content) + fill(footer, title, desc))
+
+const centeredH1 = (text) => `<center><h1>${text}</h1></center>\n`
+
+// rating out of 5 -> text stars, rounded to the nearest half
+const stars = (rating) => {
+  const halves = Math.min(10, Math.max(0, Math.round((parseFloat(rating) || 0) * 2)))
+  const full = Math.floor(halves / 2)
+  const half = halves % 2
+  return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(5 - full - half)
+}
+
+// --- build ---
+
+fs.rmSync(DIST, {recursive: true, force: true})
+fs.mkdirSync(DIST, {recursive: true})
+if (fs.existsSync('public')) fs.cpSync('public', DIST, {recursive: true})
+
+// free-standing pages: src/pages/<slug>.md -> /<slug>/, except about which is the homepage
+for (const {slug, meta, body} of readDir(`${SRC}/pages`)) {
+  const content = md(body).replace(/^<h1>(.*)<\/h1>\n/, centeredH1('$1'))
+  page(slug === 'about' ? 'index.html' : `${slug}/index.html`, htmlesc(meta.title || slug), htmlesc(meta.description || SITE_DESC), content)
+}
+
+// niche page: a section per tag, a click-to-open <details> per entry
+const niche = readDir(`${SRC}/niche`)
+if (niche.length) {
+  let content = centeredH1('niche')
+  for (const [tag, label] of Object.entries(NICHE_TAGS)) {
+    const entries = niche.filter(({meta}) => (meta.tag || '').toLowerCase().replace(/[^a-z]/g, '') === tag)
+    if (!entries.length) continue
+    content += `<h2>${label}</h2>\n`
+    for (const {meta, body} of entries) {
+      content += `<details>\n<summary>${htmlesc(meta.title || 'untitled')}</summary>\n`
+      content += md(body).replaceAll('<img ', '<img width="128" ')
+      if (meta.rating) {
+        content += `<p>rating: <font color="#e0559a" size="4">${stars(meta.rating)}</font> <small>(${htmlesc(meta.rating)} / 5)</small></p>\n`
+      }
+      content += '</details>\n'
+    }
+  }
+  page('niche/index.html', 'niche', SITE_DESC, content)
+}
+
+// blog posts: src/blog/posts/<slug>.md -> /blog/<slug>/
+const posts = readDir(`${SRC}/blog/posts`).map(({slug, meta, body}) => ({
+  slug,
+  title: meta.title || slug,
+  date: meta.date || '',
+  desc: meta.description || SITE_DESC,
+  html: md(body)
+}))
+for (const {slug, title, date, desc, html} of posts) {
   const content =
     '<article>\n' +
-    `<center>\n<h1>${etitle}</h1>\n` +
+    `<center>\n<h1>${htmlesc(title)}</h1>\n` +
     (date ? `<p><small><time datetime="${date}">${date}</time></small></p>\n` : '') +
     '</center>\n' +
     html +
     '</article>\n' +
     '<hr>\n<p><a href="/blog/">&lt; all posts</a></p>\n'
-  emit(etitle, htmlesc(desc), content, `${dist}/blog/${slug}/index.html`)
-  posts.push({key: `${date || '0000-00-00'}\t${title}\t${slug}`, date: date || '0000-00-00', title, slug, desc, html})
+  page(`blog/${slug}/index.html`, htmlesc(title), htmlesc(desc), content)
 }
-// newest first: plain byte-order descending on date, title, slug
-posts.sort((a, b) => (a.key < b.key ? 1 : -1))
+
+// newest first, ties broken by title then slug (all descending)
+const sortKey = (p) => `${p.date || '0000-00-00'}\t${p.title}\t${p.slug}`
+posts.sort((a, b) => (sortKey(a) < sortKey(b) ? 1 : -1))
 
 // /blog/ index
-let bc = '<center><h1>blog</h1></center>\n<ul>\n'
-for (const {date, title, slug} of posts) {
-  bc += `<li><time datetime="${date}">${date}</time> - <a href="/blog/${slug}/">${htmlesc(title)}</a></li>\n`
+let index = centeredH1('blog') + '<ul>\n'
+for (const {slug, title, date} of posts) {
+  const d = date || '0000-00-00'
+  index += `<li><time datetime="${d}">${d}</time> - <a href="/blog/${slug}/">${htmlesc(title)}</a></li>\n`
 }
-bc += '</ul>\n'
-emit('blog', default_desc, bc, `${dist}/blog/index.html`)
+page('blog/index.html', 'blog', SITE_DESC, index + '</ul>\n')
 
 // RSS 2.0 feed
-const buildDate = rfc822(posts.length ? posts[0].date : '') || rfc822('1970-01-01')
 let feed =
   '<?xml version="1.0" encoding="UTF-8"?>\n' +
   '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">\n' +
   '<channel>\n' +
-  `<title>${xmlesc(feed_title)}</title>\n` +
-  `<link>${baseurl}/</link>\n` +
-  `<description>${xmlesc(default_desc)}</description>\n` +
+  `<title>${xmlesc(SITE_DESC)}</title>\n` +
+  `<link>${BASE_URL}/</link>\n` +
+  `<description>${xmlesc(SITE_DESC)}</description>\n` +
   '<language>en</language>\n' +
-  `<lastBuildDate>${buildDate}</lastBuildDate>\n` +
-  `<atom:link href="${baseurl}/feed.xml" rel="self" type="application/rss+xml"/>\n`
-for (const {date, title, slug, desc, html} of posts) {
-  const link = `${baseurl}/blog/${slug}/`
-  // ]]> is split so the CDATA can't end early
+  `<lastBuildDate>${rfc822(posts[0]?.date || '') || rfc822('1970-01-01')}</lastBuildDate>\n` +
+  `<atom:link href="${BASE_URL}/feed.xml" rel="self" type="application/rss+xml"/>\n`
+for (const {slug, title, date, desc, html} of posts) {
+  const link = `${BASE_URL}/blog/${slug}/`
+  const pubDate = rfc822(date)
+  // split any ]]> so the CDATA can't end early
   const cdata = html.replace(/\n+$/, '').replace(/]]>/g, ']]]]><![CDATA[>')
-  const pd = rfc822(date)
   feed +=
     '<item>\n' +
     `<title>${xmlesc(title)}</title>\n` +
     `<link>${link}</link>\n` +
     `<guid isPermaLink="true">${link}</guid>\n` +
-    (pd ? `<pubDate>${pd}</pubDate>\n` : '') +
+    (pubDate ? `<pubDate>${pubDate}</pubDate>\n` : '') +
     `<description>${xmlesc(desc)}</description>\n` +
     `<content:encoded><![CDATA[${cdata}]]></content:encoded>\n` +
     '</item>\n'
 }
-feed += '</channel>\n</rss>\n'
-write(`${dist}/feed.xml`, feed)
+write(`${DIST}/feed.xml`, feed + '</channel>\n</rss>\n')
