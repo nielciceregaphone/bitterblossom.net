@@ -3,29 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>@TITLE@</title>
   <meta name="description" content="@DESCRIPTION@">
+  <link rel="canonical" href="@CANONICAL@">
   <link rel="icon" type="image/png" href="/assets/web/favicon.png">
   <link rel="alternate" type="application/rss+xml" title="madeline's blog" href="/feed.xml">
-</head>
-<body bgcolor="#e6e6fa" text="#2a1f4a" link="#6b2fa0" vlink="#a0337a" alink="#e0559a">
-<font face="Comic Sans MS, Chalkboard SE, Comic Neue, sans-serif">
-  <center>
-  <header>
-    <p>
-      <a href="/"><img src="/assets/web/favicon.png" width="48" height="48" alt="madeline's pixel avatar" title="hi :3" align="middle"></a>
-      <b><font size="5">bitterblossom.net</font></b>
-    </p>
-    <nav>
-      <font face="@MONO@">
-      [ <a href="/">about</a> ]
-      [ <a href="/blog/">blog</a> ]
-      [ <a href="/niche/">niche</a> ]
-      [ <a href="/feed.xml">rss</a> ]
-      </font>
-    </nav>
-  </header>
-  </center>
-  <hr noshade size="2" color="#9b7fd1">
-  <main>
-  <blockquote>
+@HEAD@</head>
+<body>
+<header>
+  <hgroup>
+    <h1><a href="/"><img src="/assets/web/favicon.png" width="64" height="64" alt="madeline's avatar" title="hi :3"> bitterblossom.net</a></h1>
+    <p>@TAGLINE@</p>
+  </hgroup>
+  <nav aria-label="site">
+    <menu>
+@NAV@
+    </menu>
+  </nav>
+  <search>
+    <form action="https://duckduckgo.com/" method="get">
+      <label for="q">search this site</label>
+      <input id="q" type="search" name="q" list="titles" accesskey="s" placeholder="try a post title" required>
+      <input type="hidden" name="sites" value="bitterblossom.net">
+      <button type="submit">search</button>
+      <kbd>s</kbd>
+      <datalist id="titles">
+@TITLES@
+      </datalist>
+    </form>
+  </search>
+</header>
+<hr>
+<main>
