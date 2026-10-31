@@ -118,6 +118,14 @@ const anchorHeadings = (html) => {
   return {html, headings}
 }
 
+// a post that opens with a heading saying the same as its title or description repeats itself
+// right under the hgroup, so drop it (page only, the feed keeps the post as written)
+const dropRepeatedHeading = (html, said) =>
+  html.replace(/^<h[1-6]>([\s\S]*?)<\/h[1-6]>\n/, (whole, inner) => {
+    const text = decode(stripTags(inner)).trim().toLowerCase()
+    return said.some((s) => s && s.trim().toLowerCase() === text) ? '' : whole
+  })
+
 // nested <ol> from a flat heading list, a sub-list opens inside the still-open parent <li>
 const tocList = (headings) => {
   let out = ''
@@ -303,10 +311,10 @@ if (niche.length) {
 posts.forEach((p, i) => {
   const older = posts[i + 1]
   const newer = posts[i - 1]
-  const {html, headings} = anchorHeadings(p.html)
+  const {html, headings} = anchorHeadings(dropRepeatedHeading(p.html, [p.title, p.blurb]))
   const toc =
     headings.length >= 2
-      ? `<nav aria-label="contents">\n<details open>\n<summary>contents</summary>\n${tocList(headings)}</details>\n</nav>\n`
+      ? `<nav aria-label="contents">\n<details>\n<summary>contents</summary>\n${tocList(headings)}</details>\n</nav>\n`
       : ''
   const sibling = (post, rel, key, label) =>
     post ? `<li>${label}: <a href="${postUrl(post)}" rel="${rel}" accesskey="${key}">${htmlesc(post.title)}</a> <kbd>${key}</kbd></li>\n` : ''
