@@ -168,8 +168,8 @@ const KEYS = [
   {key: 'r', label: 'rss', href: '/feed.xml', abbr: 'really simple syndication'},
   {key: 's', label: 'search', info: 'jumps to the search box on the blog page'},
   {key: 'k', label: 'keyboard shortcuts', info: 'opens this window'},
-  {key: 'p', label: 'previous post', info: 'only on a blog post'},
-  {key: 'x', label: 'next post', info: 'only on a blog post'}
+  {key: 'p', label: 'previous', info: 'on a blog post or niche page'},
+  {key: 'x', label: 'next', info: 'on a blog post or niche page'}
 ]
 
 // one line of links. `current` is the page being built: its own link (or its section's) goes bold
@@ -268,43 +268,69 @@ for (const {slug, meta, body} of readDir(`${SRC}/pages`)) {
   page(home ? 'index.html' : `${slug}/index.html`, {title: htmlesc(meta.title || slug), desc: htmlesc(meta.description || SITE_DESC), content})
 }
 
-// one niche entry: an exclusive (one open at a time) <details>, title plus a rating <meter> in the summary
-const nicheEntry = ({meta, body}, open) => {
-  const title = htmlesc(meta.title || 'untitled')
-  const rating = Math.min(5, Math.max(0, parseFloat(meta.rating) || 0))
-  // a leading image paragraph is the cover art: lift it into a <figure>
-  const text = md(body).replace(/^<p>(<img [^>]*?) ?\/?><\/p>\n/, (_, img) => {
-    const art = img.replace(/ alt="[^"]*"/, ' alt=""').replace('<img ', '<img width="128" ')
-    return `<figure>\n${art}>\n<figcaption>cover art</figcaption>\n</figure>\n`
-  })
-  // the text inside <meter> is what browsers without meter support show
-  const meter = meta.rating
-    ? ` <meter min="0" max="5" low="2" high="4" optimum="5" value="${rating}" title="${rating} out of 5">${stars(meta.rating)} ${rating} / 5</meter>`
-    : ''
-  return (
-    `<details name="niche"${open ? ' open' : ''}>\n<summary>${title}${meter}</summary>\n` +
-    text +
-    (meta.rating ? `<p>rating: ${stars(meta.rating)} <small>(${htmlesc(meta.rating)} / 5)</small></p>\n` : '') +
-    '</details>\n'
-  )
-}
+// --- niche ---
+// reviews: src/niche/<slug>.md -> /niche/<slug>/, listed on /niche/ as a shelf, one table per tag
 
-// niche page: a section per tag, the first entry open
+// rating out of 5 as stars plus the number; the stars are hidden from screen readers so it reads "4.5 / 5".
+// non-breaking spaces keep "4.5 / 5" on one line in a narrow table cell; `sep` goes between the two
+const ratingText = (rating, sep = ' ') => `<span aria-hidden="true">${stars(rating)}</span>${sep}${htmlesc(rating)}&nbsp;/&nbsp;5`
+
+const nicheUrl = (n) => `/niche/${n.slug}/`
+
 const niche = readDir(`${SRC}/niche`)
+  .map(({slug, meta, body}) => {
+    const tag = (meta.tag || '').toLowerCase().replace(/[^a-z]/g, '')
+    let html = md(body)
+    // a leading image paragraph is the cover art: lifted out so the shelf can use it as a thumbnail
+    let cover = ''
+    html = html.replace(/^<p><img [^>]*?src="([^"]*)"[^>]*><\/p>\n/, (_, src) => ((cover = src), ''))
+    return {slug, tag, title: meta.title || slug, year: meta.year || '', by: meta.by || '', rating: meta.rating || '', cover, html}
+  })
+  .filter((n) => n.tag in NICHE_TAGS)
+  // shelf order: tags in NICHE_TAGS order, then by filename
+  .sort((a, b) => Object.keys(NICHE_TAGS).indexOf(a.tag) - Object.keys(NICHE_TAGS).indexOf(b.tag))
+
+// "2003 · Naughty Dog", either half optional
+const byline = (n) => [n.year, n.by && htmlesc(n.by)].filter(Boolean).join(' &middot; ')
+
+const coverImg = (n, width) =>
+  n.cover ? `<img src="${n.cover}" width="${width}" alt="${width < 100 ? '' : `${htmlesc(n.title)} cover art`}" loading="lazy">` : ''
+
 if (niche.length) {
-  let content = '<h2>niche</h2>\n'
-  let first = true
+  let shelf = '<h2>niche</h2>\n'
   for (const [tag, label] of Object.entries(NICHE_TAGS)) {
-    const entries = niche.filter(({meta}) => (meta.tag || '').toLowerCase().replace(/[^a-z]/g, '') === tag)
+    const entries = niche.filter((n) => n.tag === tag)
     if (!entries.length) continue
-    content += `<section>\n<h3>${label}</h3>\n`
-    for (const entry of entries) {
-      content += nicheEntry(entry, first)
-      first = false
+    shelf += `<section>\n<h3>${label}</h3>\n<table>\n<thead>\n<tr><th scope="col">cover</th><th scope="col">title</th><th scope="col">rating</th></tr>\n</thead>\n<tbody>\n`
+    for (const n of entries) {
+      shelf +=
+        `<tr><td><a href="${nicheUrl(n)}" tabindex="-1">${coverImg(n, 48)}</a></td>` +
+        `<td><a href="${nicheUrl(n)}">${htmlesc(n.title)}</a>${byline(n) ? `<br>\n<small>${byline(n)}</small>` : ''}</td>` +
+        `<td>${n.rating ? ratingText(n.rating, '<br>\n') : 'unrated'}</td></tr>\n`
     }
-    content += '</section>\n'
+    shelf += '</tbody>\n</table>\n</section>\n'
   }
-  page('niche/index.html', {title: 'niche', desc: htmlesc(SITE_DESC), content})
+  page('niche/index.html', {title: 'niche', desc: htmlesc(SITE_DESC), content: shelf})
+
+  niche.forEach((n, i) => {
+    const prev = niche[i - 1]
+    const next = niche[i + 1]
+    const sibling = (entry, rel, key, label) =>
+      entry ? `<li>${label}: <a href="${nicheUrl(entry)}" rel="${rel}" accesskey="${key}">${htmlesc(entry.title)}</a></li>\n` : ''
+    const meta = [byline(n), `<a href="/niche/">${NICHE_TAGS[n.tag]}</a>`].filter(Boolean).join(' &middot; ')
+    const content =
+      `<article>\n<hgroup>\n<h2>${htmlesc(n.title)}</h2>\n<p>${meta}</p>\n</hgroup>\n` +
+      (n.cover ? `<p>${coverImg(n, 160)}</p>\n` : '') +
+      (n.rating ? `<p><strong>rating:</strong> ${ratingText(n.rating)}</p>\n` : '') +
+      fitToScreen(shiftHeadings(n.html)) +
+      '</article>\n' +
+      '<nav aria-label="more niche">\n<ul>\n' +
+      sibling(prev, 'prev', 'p', 'previous') +
+      sibling(next, 'next', 'x', 'next') +
+      '<li><a href="/niche/">all niche</a></li>\n</ul>\n</nav>\n'
+    const desc = `${n.title}${n.year ? `, ${n.year}` : ''}${n.rating ? `, rated ${n.rating} out of 5` : ''}`
+    page(`niche/${n.slug}/index.html`, {title: htmlesc(n.title), desc: htmlesc(desc), content})
+  })
 }
 
 // one page per post. posts[] is newest first, so the next index is the older post (rel="prev")
