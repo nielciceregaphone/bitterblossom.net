@@ -244,13 +244,6 @@ const postItem = (p, peek) =>
 const postList = (list, peek = false) =>
   `<ol reversed start="${posts.length - posts.indexOf(list[0])}">\n${list.map((p) => postItem(p, peek)).join('')}</ol>\n`
 
-// free-standing pages: src/pages/<slug>.md -> /<slug>/, except index which is the homepage
-for (const {slug, meta, body} of readDir(`${SRC}/pages`)) {
-  const home = slug === 'index'
-  const content = shiftHeadings(md(body))
-  page(home ? 'index.html' : `${slug}/index.html`, {title: htmlesc(meta.title || slug), desc: htmlesc(meta.description || SITE_DESC), content})
-}
-
 // --- niche ---
 // reviews: src/niche/<slug>.md -> /niche/<slug>/, listed on /niche/ as a shelf, one table per tag
 
@@ -314,6 +307,38 @@ if (niche.length) {
     const desc = `${n.title}${n.year ? `, ${n.year}` : ''}${n.rating ? `, rated ${n.rating} out of 5` : ''}`
     page(`niche/${n.slug}/index.html`, {title: htmlesc(n.title), desc: htmlesc(desc), content})
   })
+}
+
+// --- homepage ---
+// welcome text from src/pages/index.md, then three boxes. worker/index.js finishes two of them on each visit:
+// it keeps one review out of the `hidden` ones (no worker, e.g. a local preview: the first one shows) and
+// fills the recently played list from what it has logged out of navidrome
+
+const latestPost = (p) =>
+  '<section>\n<h3>latest post</h3>\n' +
+  `<p><a href="${postUrl(p)}">${htmlesc(p.title)}</a> ${dateTag(p.date)}` +
+  (p.blurb ? `<br>\n<small>${htmlesc(p.blurb)}</small>` : '') +
+  '</p>\n</section>\n'
+
+const reviewCard = (n, i) =>
+  `<article data-review${i ? ' hidden' : ''}>\n` +
+  (n.cover ? `<p><a href="${nicheUrl(n)}" tabindex="-1" aria-hidden="true">${coverImg(n, 64)}</a></p>\n` : '') +
+  `<p><a href="${nicheUrl(n)}">${htmlesc(n.title)}</a>` +
+  (byline(n) ? `<br>\n<small>${byline(n)}</small>` : '') +
+  (n.rating ? `<br>\n${ratingText(n.rating)}` : '') +
+  '</p>\n</article>\n'
+
+const randomReview = () =>
+  `<section>\n<h3>random review</h3>\n<div data-reviews="${niche.length}">\n${niche.map(reviewCard).join('')}</div>\n</section>\n`
+
+const recentlyPlayed = '<section>\n<h3>recently played</h3>\n<ul id="recent-tracks">\n<li>nothing yet</li>\n</ul>\n</section>\n'
+
+// free-standing pages: src/pages/<slug>.md -> /<slug>/, except index which is the homepage
+for (const {slug, meta, body} of readDir(`${SRC}/pages`)) {
+  const home = slug === 'index'
+  let content = shiftHeadings(md(body))
+  if (home) content += (posts.length ? latestPost(posts[0]) : '') + (niche.length ? randomReview() : '') + recentlyPlayed
+  page(home ? 'index.html' : `${slug}/index.html`, {title: htmlesc(meta.title || slug), desc: htmlesc(meta.description || SITE_DESC), content})
 }
 
 // one page per post. posts[] is newest first, so the next index is the older post (rel="prev")
