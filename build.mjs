@@ -192,9 +192,9 @@ const footer = template('footer')
 const fill = (t, extra) => Object.entries({...vars, ...extra}).reduce((s, [k, v]) => s.replaceAll(k, () => v), t)
 
 // title, desc and head are html (title and desc already escaped); head is extra <link>s for the <head>
-const page = (file, {title, desc, content, head = ''}) => {
+const page = (file, {title, desc, content, head = '', aside = ''}) => {
   const url = '/' + file.replace(/index\.html$/, '')
-  const extra = {'@TITLE@': title, '@DESCRIPTION@': desc, '@CANONICAL@': BASE_URL + url, '@HEAD@': head, '@NAV@': navItems(url)}
+  const extra = {'@TITLE@': title, '@DESCRIPTION@': desc, '@CANONICAL@': BASE_URL + url, '@HEAD@': head, '@NAV@': navItems(url), '@ASIDE@': aside}
   write(`${DIST}/${file}`, fill(header, extra) + content + fill(footer, extra))
 }
 
@@ -310,9 +310,9 @@ if (niche.length) {
 }
 
 // --- homepage ---
-// welcome text from src/pages/index.md, then three boxes. worker/index.js finishes two of them on each visit:
-// it keeps one review out of the `hidden` ones (no worker, e.g. a local preview: the first one shows) and
-// fills the recently played list from what it has logged out of navidrome
+// welcome text from src/pages/index.md, the latest blogpost and a random nichepost, plus the last played song
+// up in the header. worker/index.js finishes two of them on each visit: it keeps one review out of the
+// `hidden` ones (no worker, e.g. a local preview: the first one shows) and fills in the song
 
 const latestPost = (p) =>
   '<section>\n<h3>latest blogpost</h3>\n' +
@@ -331,14 +331,24 @@ const reviewCard = (n, i) =>
 const randomReview = () =>
   `<section>\n<h3>random nichepost</h3>\n<div data-reviews="${niche.length}">\n${niche.map(reviewCard).join('')}</div>\n</section>\n`
 
-const recentlyPlayed = '<section>\n<h3>recently played</h3>\n<ul id="recent-tracks">\n<li>nothing yet</li>\n</ul>\n</section>\n'
+// the newest song, floated to the right of the header with the old `align="right"` table trick (the only
+// way to sit beside the site name without css). the worker swaps the cells for the real song, cover included
+const nowPlaying =
+  '<table align="right" role="presentation" id="now-playing">\n' +
+  '<tr><td><small>last played</small><br>\nnothing yet</td></tr>\n' +
+  '</table>\n'
 
 // free-standing pages: src/pages/<slug>.md -> /<slug>/, except index which is the homepage
 for (const {slug, meta, body} of readDir(`${SRC}/pages`)) {
   const home = slug === 'index'
   let content = shiftHeadings(md(body))
-  if (home) content += (posts.length ? latestPost(posts[0]) : '') + (niche.length ? randomReview() : '') + recentlyPlayed
-  page(home ? 'index.html' : `${slug}/index.html`, {title: htmlesc(meta.title || slug), desc: htmlesc(meta.description || SITE_DESC), content})
+  if (home) content += (posts.length ? latestPost(posts[0]) : '') + (niche.length ? randomReview() : '')
+  page(home ? 'index.html' : `${slug}/index.html`, {
+    title: htmlesc(meta.title || slug),
+    desc: htmlesc(meta.description || SITE_DESC),
+    content,
+    aside: home ? nowPlaying : ''
+  })
 }
 
 // one page per post. posts[] is newest first, so the next index is the older post (rel="prev")
