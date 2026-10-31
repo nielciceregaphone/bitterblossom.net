@@ -1,6 +1,8 @@
 ---
 tag: games
-title: Jak and Daxter 2, 2003 [Naughty Dog]
+title: Jak and Daxter 2
+year: 2003
+by: Naughty Dog
 rating: 4.5
 ---
 

@@ -1,6 +1,8 @@
 ---
 tag: games
-title: Jak and Daxter: The Precursor Legacy, 2001 [Naughty Dog]
+title: Jak and Daxter: The Precursor Legacy
+year: 2001
+by: Naughty Dog
 rating: 5
 ---
 
