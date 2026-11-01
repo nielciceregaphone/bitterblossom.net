@@ -24,9 +24,10 @@ const subsonic = (env, endpoint, params = {}) => {
   const missing = SECRETS.filter((k) => !env[k])
   if (missing.length) throw new Error(`secret not set on the worker: ${missing.join(', ')}`)
   const q = new URLSearchParams({
-    u: env.NAVIDROME_USER,
-    t: env.NAVIDROME_TOKEN,
-    s: env.NAVIDROME_SALT,
+    // trimmed: a value pasted into the dashboard can pick up a stray space or newline
+    u: env.NAVIDROME_USER.trim(),
+    t: env.NAVIDROME_TOKEN.trim(),
+    s: env.NAVIDROME_SALT.trim(),
     v: '1.16.1',
     c: 'bitterblossom.net',
     ...params
