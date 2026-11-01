@@ -299,11 +299,17 @@ if (niche.length) {
 // up in the header. worker/index.js finishes two of them on each visit: it keeps one review out of the
 // `hidden` ones (no worker, e.g. a local preview: the first one shows) and fills in the song
 
+// sits whatever is under a homepage heading a little to the right (role="none": not announced as a quote)
+const indent = (html) => `<blockquote role="none">\n${html}</blockquote>\n`
+
 const latestPost = (p) =>
   '<section>\n<h3>Latest Blogpost:</h3>\n' +
-  `<p><a href="${postUrl(p)}">${htmlesc(p.title)}</a> ${dateTag(p.date)}` +
-  (p.blurb ? `<br>\n<small>${htmlesc(p.blurb)}</small>` : '') +
-  '</p>\n</section>\n'
+  indent(
+    `<p><a href="${postUrl(p)}">${htmlesc(p.title)}</a> ${dateTag(p.date)}` +
+      (p.blurb ? `<br>\n<small>${htmlesc(p.blurb)}</small>` : '') +
+      '</p>\n'
+  ) +
+  '</section>\n'
 
 const reviewCard = (n, i) =>
   `<article data-review${i ? ' hidden' : ''}>\n` +
@@ -314,7 +320,9 @@ const reviewCard = (n, i) =>
   '</p>\n</article>\n'
 
 const randomReview = () =>
-  `<section>\n<h3>Random Nichepost:</h3>\n<div data-reviews="${niche.length}">\n${niche.map(reviewCard).join('')}</div>\n</section>\n`
+  '<section>\n<h3>Random Nichepost:</h3>\n' +
+  indent(`<div data-reviews="${niche.length}">\n${niche.map(reviewCard).join('')}</div>\n`) +
+  '</section>\n'
 
 // the newest song, floated to the right of the header with the old `align="right"` table trick (the only
 // way to sit beside the site name without css). the worker swaps the cells for the real song, cover included
@@ -327,7 +335,11 @@ const nowPlaying =
 for (const {slug, meta, body} of readDir(`${SRC}/pages`)) {
   const home = slug === 'index'
   let content = shiftHeadings(md(body))
-  if (home) content += (posts.length ? latestPost(posts[0]) : '') + (niche.length ? randomReview() : '')
+  if (home) {
+    // the welcome text gets the same indent as the boxes under it
+    content = content.replace(/^(<h2>[\s\S]*?<\/h2>\n)([\s\S]+)$/, (_, heading, rest) => heading + indent(rest))
+    content += (posts.length ? latestPost(posts[0]) : '') + (niche.length ? randomReview() : '')
+  }
   page(home ? 'index.html' : `${slug}/index.html`, {
     title: htmlesc(meta.title || slug),
     desc: htmlesc(meta.description || SITE_DESC),
