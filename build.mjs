@@ -157,29 +157,24 @@ const fitToScreen = (html) =>
     .replaceAll('<pre>', '<pre wrap>')
 
 // --- navigation ---
-// one list drives the menu links and their accesskeys
+// the menu links and their accesskeys (alt+letter or similar, depending on the browser)
 
-const KEYS = [
+const NAV = [
   {key: 'a', label: 'index', href: '/'},
   {key: 'b', label: 'blog', href: '/blog/'},
   {key: 'n', label: 'niche', href: '/niche/'},
-  {key: 'r', label: 'rss', href: '/feed.xml', abbr: 'really simple syndication'},
-  {key: 's', label: 'search', info: 'jumps to the search box on the blog page'},
-  {key: 'p', label: 'previous', info: 'on a blog post or niche page'},
-  {key: 'x', label: 'next', info: 'on a blog post or niche page'}
+  {key: 'r', label: 'rss', href: '/feed.xml', abbr: 'really simple syndication'}
 ]
 
 // one line of links. `current` is the page being built: its own link (or its section's) goes bold
 const navItems = (current) =>
-  KEYS.filter((k) => k.href)
-    .map(({key, label, href, abbr}) => {
-      const text = abbr ? `<abbr title="${abbr}">${label}</abbr>` : label
-      const here = href === current
-      const within = !here && href !== '/' && current.startsWith(href)
-      const mark = here ? ' aria-current="page"' : within ? ' aria-current="true"' : ''
-      return `<a href="${href}" accesskey="${key}"${mark}>${here || within ? `<strong>${text}</strong>` : text}</a>`
-    })
-    .join(' //\n')
+  NAV.map(({key, label, href, abbr}) => {
+    const text = abbr ? `<abbr title="${abbr}">${label}</abbr>` : label
+    const here = href === current
+    const within = !here && href !== '/' && current.startsWith(href)
+    const mark = here ? ' aria-current="page"' : within ? ' aria-current="true"' : ''
+    return `<a href="${href}" accesskey="${key}"${mark}>${here || within ? `<strong>${text}</strong>` : text}</a>`
+  }).join(' //\n')
 
 
 // --- templates ---
@@ -210,7 +205,7 @@ fs.rmSync(DIST, {recursive: true, force: true})
 fs.mkdirSync(DIST, {recursive: true})
 if (fs.existsSync('public')) fs.cpSync('public', DIST, {recursive: true})
 
-// blog posts first: the blog page's search suggestions and the index need them
+// blog posts first: the homepage and the index need them
 const posts = readDir(`${SRC}/blog/posts`).map(({slug, meta, body}) => {
   const html = md(body)
   const words = wordCount(html)
@@ -220,16 +215,6 @@ const posts = readDir(`${SRC}/blog/posts`).map(({slug, meta, body}) => {
 // newest first, ties broken by title then slug (all descending)
 const sortKey = (p) => `${p.date || '0000-00-00'}\t${p.title}\t${p.slug}`
 posts.sort((a, b) => (sortKey(a) < sortKey(b) ? 1 : -1))
-
-// no-js site search for the blog page: duckduckgo limited to this site, post titles as <datalist> suggestions
-const search =
-  '<search>\n<form action="https://duckduckgo.com/" method="get">\n' +
-  '<label for="q">search posts</label>\n' +
-  '<input id="q" type="search" name="q" list="titles" accesskey="s" placeholder="try a post title" required>\n' +
-  '<input type="hidden" name="sites" value="bitterblossom.net">\n' +
-  '<button type="submit">search</button>\n' +
-  `<datalist id="titles">\n${posts.map((p) => `<option value="${htmlesc(p.title)}"></option>`).join('\n')}\n</datalist>\n` +
-  '</form>\n</search>\n'
 
 const postUrl = (p) => `/blog/${p.slug}/`
 const dateTag = (date) => (date ? `<time datetime="${date}">${shortDate(date)}</time>` : '')
@@ -377,7 +362,7 @@ posts.forEach((p, i) => {
 
 // /blog/ index: a section per month, and a hover preview per post (chrome's interestfor, inert elsewhere)
 const months = Map.groupBy(posts, (p) => p.date.match(/^\d{4}-\d{2}/)?.[0] || '')
-let index = '<h2>blog</h2>\n' + search
+let index = '<h2>blog</h2>\n'
 for (const [month, list] of months) {
   const label = month ? `${monthName(month.slice(5))} ${month.slice(0, 4)}` : 'undated'
   index += `<section>\n<h3>${month ? `<time datetime="${month}">${label}</time>` : label}</h3>\n${postList(list, true)}</section>\n`
