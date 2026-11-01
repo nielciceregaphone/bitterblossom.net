@@ -3,7 +3,7 @@ tag: games
 title: The Sims
 year: 2000
 by: Maxis
-rating:
+rating: 4
 ---
 
 ![icon](/assets/niche/the-sims.png)

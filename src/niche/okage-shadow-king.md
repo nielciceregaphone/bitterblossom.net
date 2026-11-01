@@ -3,7 +3,7 @@ tag: games
 title: Okage: Shadow King
 year: 2001
 by: Zener Works
-rating:
+rating: 4
 ---
 
 ![icon](/assets/niche/okage-shadow-king.png)
