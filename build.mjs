@@ -300,7 +300,7 @@ if (niche.length) {
 // `hidden` ones (no worker, e.g. a local preview: the first one shows) and fills in the song
 
 const latestPost = (p) =>
-  '<section>\n<h3>latest blogpost</h3>\n' +
+  '<section>\n<h3>Latest Blogpost:</h3>\n' +
   `<p><a href="${postUrl(p)}">${htmlesc(p.title)}</a> ${dateTag(p.date)}` +
   (p.blurb ? `<br>\n<small>${htmlesc(p.blurb)}</small>` : '') +
   '</p>\n</section>\n'
@@ -314,7 +314,7 @@ const reviewCard = (n, i) =>
   '</p>\n</article>\n'
 
 const randomReview = () =>
-  `<section>\n<h3>random nichepost</h3>\n<div data-reviews="${niche.length}">\n${niche.map(reviewCard).join('')}</div>\n</section>\n`
+  `<section>\n<h3>Random Nichepost:</h3>\n<div data-reviews="${niche.length}">\n${niche.map(reviewCard).join('')}</div>\n</section>\n`
 
 // the newest song, floated to the right of the header with the old `align="right"` table trick (the only
 // way to sit beside the site name without css). the worker swaps the cells for the real song, cover included
