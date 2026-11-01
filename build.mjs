@@ -58,11 +58,14 @@ const readMd = (file) => {
   return {slug: path.basename(file, '.md'), meta, body}
 }
 
-// every *.md in a dir, sorted by filename; [] if the dir is missing
-const readDir = (dir) =>
-  fs.existsSync(dir)
-    ? fs.readdirSync(dir).filter((f) => f.endsWith('.md') && !f.startsWith('.')).sort().map((f) => readMd(path.join(dir, f)))
-    : []
+// every *.md in a dir, sorted by filename; [] if the dir is missing.
+// anything else is skipped, with a warning in the build log so a forgotten `.md` doesn't vanish silently
+const readDir = (dir) => {
+  if (!fs.existsSync(dir)) return []
+  const files = fs.readdirSync(dir).filter((f) => !f.startsWith('.'))
+  for (const f of files.filter((f) => !f.endsWith('.md'))) console.warn(`skipped ${path.join(dir, f)}: not a .md file`)
+  return files.filter((f) => f.endsWith('.md')).sort().map((f) => readMd(path.join(dir, f)))
+}
 
 const write = (file, text) => {
   fs.mkdirSync(path.dirname(file), {recursive: true})
