@@ -17,7 +17,12 @@ const esc = (s) =>
 
 // --- navidrome ---
 
+const SECRETS = ['NAVIDROME_USER', 'NAVIDROME_TOKEN', 'NAVIDROME_SALT']
+
 const subsonic = (env, endpoint, params = {}) => {
+  // a missing secret would otherwise go out as the text "undefined" and look like a wrong password
+  const missing = SECRETS.filter((k) => !env[k])
+  if (missing.length) throw new Error(`secret not set on the worker: ${missing.join(', ')}`)
   const q = new URLSearchParams({
     u: env.NAVIDROME_USER,
     t: env.NAVIDROME_TOKEN,
