@@ -13,7 +13,9 @@ const SITE_DESC = "madeline's blog"
 const IMG_WIDTH = 340 // widest photo that still fits a 360px phone next to the default body margin
 const SRC = 'src'
 const DIST = 'dist'
-const NICHE_TAGS = {games: 'cool games', shows: 'cool shows', movies: 'cool movies', music: 'cool songs'}
+const NICHE_TAGS = {games: 'Games', music: 'Songs/Albums', movies: 'Movies/Shows'}
+// other spellings a post's `tag:` can use for the same shelf
+const NICHE_TAG_ALIASES = {songs: 'music', albums: 'music', songsalbums: 'music', shows: 'movies', moviesshows: 'movies'}
 
 // --- helpers ---
 
@@ -240,7 +242,8 @@ const nicheUrl = (n) => `/niche/${n.slug}/`
 
 const niche = readDir(`${SRC}/niche`)
   .map(({slug, meta, body}) => {
-    const tag = (meta.tag || '').toLowerCase().replace(/[^a-z]/g, '')
+    const raw = (meta.tag || '').toLowerCase().replace(/[^a-z]/g, '')
+    const tag = NICHE_TAG_ALIASES[raw] || raw
     let html = md(body)
     // a leading image paragraph is the cover art: lifted out so the shelf can use it as a thumbnail
     let cover = ''
