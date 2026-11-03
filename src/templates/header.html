@@ -23,9 +23,10 @@
   <h1><a href="/" tabindex="-1" aria-hidden="true"><img src="/assets/web/favicon.png" width="64" height="64" alt="" title="hi :3" align="middle"></a> <a href="/">bitterblossom.net</a></h1>
   <!-- everything under the name starts where the name does: 72px in, the 64px logo plus the 8px space after it.
        plain html has no free indent, so it's the old empty-cell table trick (a blockquote only moves 40px, and
-       eats 40px on the right too). role="presentation": it's layout, not a table of data -->
+       eats 40px on the right too). role="presentation": it's layout, not a table of data.
+       the tagline isn't in a <p> so it sits right under the title's own margin, 21px below the logo -->
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td width="72"></td><td valign="top">
-    <p>@TAGLINE@</p>
+    @TAGLINE@
     <nav aria-label="site">
       <p>@NAV@</p>
     </nav>
