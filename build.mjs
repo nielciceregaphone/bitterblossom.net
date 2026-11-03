@@ -10,6 +10,9 @@ import {gfmTaskListItem, gfmTaskListItemHtml} from 'micromark-extension-gfm-task
 
 const BASE_URL = 'https://bitterblossom.net'
 const SITE_DESC = "madeline's blog"
+// the colour of the two lines (the old hr color attribute): the logo's pink, a touch deeper so it shows on
+// both the light and the dark background (about 3.5:1 on white, 5:1 on dark)
+const LINE_COLOR = '#e0559a'
 const IMG_WIDTH = 340 // widest photo that still fits a 360px phone next to the default body margin
 const SRC = 'src'
 const DIST = 'dist'
@@ -181,7 +184,7 @@ const navItems = (current) =>
 
 // --- templates ---
 
-const vars = {'@TAGLINE@': htmlesc(SITE_DESC)}
+const vars = {'@TAGLINE@': htmlesc(SITE_DESC), '@LINE@': LINE_COLOR}
 // the <!-- notes --> in the templates are for whoever edits them, so they're dropped (with their indent and
 // line) instead of going out on every page. posts are left alone
 const template = (name) =>
