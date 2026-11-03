@@ -363,8 +363,8 @@ const randomReview = () =>
 // the newest song, floated to the right of the header with the old `align="right"` table trick (the only
 // way to sit beside the site name without css). the worker swaps the cells for the real song, cover included
 const nowPlaying =
-  // data-bar is the progress bar colour for the worker, which takes it off again
-  `<table align="right" role="presentation" id="now-playing" cellspacing="0" cellpadding="0" data-bar="${HIGHLIGHT}">\n` +
+  // data-played and data-rest are the progress bar colours for the worker, which takes them off again
+  `<table align="right" role="presentation" id="now-playing" cellspacing="0" cellpadding="0" data-played="${HIGHLIGHT}" data-rest="${TEXT}">\n` +
   '<tr><td align="right"><small>last played</small><br>\nnothing yet</td></tr>\n' +
   '</table>\n'
 

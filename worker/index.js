@@ -109,40 +109,41 @@ const viewLink = (label, roll) =>
   `<a href="/?n=${roll}&amp;art=1" title="show the cover: ${esc(label)}">view</a>` +
   '</td></tr></table>'
 
-// how far into the song, as a line of BAR_STEPS: the played part in the highlight colour, the rest in the text colour.
-// it's where the song was when the page loaded (no js, so it doesn't move), and navidrome only says which minute
-// the song started in, so it can be up to a minute off
-const BAR_STEPS = 10
-const progressBar = (song, now, color) => {
-  const done = Math.min(1, Math.max(0, (now - song.started) / (song.duration * 1000)))
-  const played = Math.round(done * BAR_STEPS)
+// how far into the song, as a line under the text and the cover, as wide as both: two <hr>s side by side in a
+// full-width table, the played part (in bar.played) and the rest (in bar.rest), split by percent. an <hr> stretches
+// to its cell, which text can't. it's where the song was when the page loaded (no js, so it doesn't move), and
+// navidrome only says which minute the song started in, so it can be up to a minute off
+const progressBar = (song, now, bar) => {
+  const done = Math.round(Math.min(1, Math.max(0, (now - song.started) / (song.duration * 1000))) * 100)
+  const part = (width, color) => `<td width="${width}%"><hr color="${color}" size="2"></td>`
   return (
-    `<small aria-hidden="true" title="about ${Math.round(done * 100)}% through">` +
-    (played ? `<font color="${color}">${'━'.repeat(played)}</font>` : '') +
-    '─'.repeat(BAR_STEPS - played) +
-    '</small>'
+    `<table role="presentation" aria-hidden="true" title="about ${done}% through" width="100%" cellspacing="0" cellpadding="0"><tr>` +
+    (done > 0 ? part(done, bar.played) : '') +
+    (done < 100 ? part(100 - done, bar.rest) : '') +
+    '</tr></table>'
   )
 }
 
 // the header box, a mirror of the logo and name on the left: the text lined up towards the cover on the far right.
 // "listening via navidrome" and a progress bar while the song plays, otherwise how long ago it was
-const songCells = (song, now, {showArt, roll, barColor}) => {
+const songCells = (song, now, {showArt, roll, bar}) => {
   const playing = song.duration && now < song.started + song.duration * 1000
   const when = playing ? 'listening via navidrome' : `last played <time datetime="${new Date(song.started).toISOString()}">${ago(now - song.started)}</time>`
   const label = [song.title, song.artist, song.album].filter(Boolean).join(', ')
   const cover = !song.hasArt
     ? ''
     : showArt
-      ? `<td valign="top"><img src="/art/${encodeURIComponent(song.cover)}" width="${ART_BOX}" height="${ART_BOX}" alt="" title="${esc(label)}"></td>\n`
+      ? // align="left" takes the cover out of the text line, so no gap opens under it for letters like g and y
+        `<td valign="top"><img src="/art/${encodeURIComponent(song.cover)}" width="${ART_BOX}" height="${ART_BOX}" alt="" title="${esc(label)}" align="left"></td>\n`
       : `<td valign="top">${viewLink(label, roll)}</td>\n`
   return (
     '<tr>\n' +
     `<td valign="top" align="right"><small>${when}</small><br>\n<cite>${esc(song.title)}</cite>` +
     (song.artist ? `<br>\n<small>${esc(song.artist)}</small>` : '') +
-    (playing ? `<br>\n${progressBar(song, now, barColor)}` : '') +
     '</td>\n' +
     (cover && `<td width="${ART_GAP}"></td>\n` + cover) +
-    '</tr>\n'
+    '</tr>\n' +
+    (playing ? `<tr><td colspan="${cover ? 3 : 1}">${progressBar(song, now, bar)}</td></tr>\n` : '')
   )
 }
 
@@ -169,10 +170,11 @@ async function homepage(res, env, {showArt = false, roll = null} = {}) {
     })
     .on('#now-playing', {
       element(el) {
-        // the bar colour comes from build.mjs on the table itself, so it isn't repeated here
-        const barColor = el.getAttribute('data-bar') || ''
-        el.removeAttribute('data-bar')
-        if (song) el.setInnerContent('\n' + songCells(song, now, {showArt, roll, barColor}), {html: true})
+        // the bar colours come from build.mjs on the table itself, so they aren't repeated here
+        const bar = {played: el.getAttribute('data-played') || '', rest: el.getAttribute('data-rest') || ''}
+        el.removeAttribute('data-played')
+        el.removeAttribute('data-rest')
+        if (song) el.setInnerContent('\n' + songCells(song, now, {showArt, roll, bar}), {html: true})
       }
     })
     .transform(res)
