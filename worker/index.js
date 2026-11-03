@@ -109,10 +109,26 @@ const viewLink = (label, roll) =>
   `<a href="/?n=${roll}&amp;art=1" title="show the cover: ${esc(label)}">view</a>` +
   '</td></tr></table>'
 
-// the header box: cover on the left, then "playing now" or how long ago, the title and the artist
-const songCells = (song, now, {showArt, roll}) => {
+// how far into the song, as a line of BAR_STEPS: the played part in the accent colour, the rest in the text colour.
+// it's where the song was when the page loaded (no js, so it doesn't move), and navidrome only says which minute
+// the song started in, so it can be up to a minute off
+const BAR_STEPS = 10
+const progressBar = (song, now, accent) => {
+  const done = Math.min(1, Math.max(0, (now - song.started) / (song.duration * 1000)))
+  const played = Math.round(done * BAR_STEPS)
+  return (
+    `<small aria-hidden="true" title="about ${Math.round(done * 100)}% through">` +
+    (played ? `<font color="${accent}">${'━'.repeat(played)}</font>` : '') +
+    '─'.repeat(BAR_STEPS - played) +
+    '</small>'
+  )
+}
+
+// the header box, a mirror of the logo and name on the left: the text lined up towards the cover on the far right.
+// "listening via navidrome" and a progress bar while the song plays, otherwise how long ago it was
+const songCells = (song, now, {showArt, roll, accent}) => {
   const playing = song.duration && now < song.started + song.duration * 1000
-  const when = playing ? 'playing now' : `last played <time datetime="${new Date(song.started).toISOString()}">${ago(now - song.started)}</time>`
+  const when = playing ? 'listening via navidrome' : `last played <time datetime="${new Date(song.started).toISOString()}">${ago(now - song.started)}</time>`
   const label = [song.title, song.artist, song.album].filter(Boolean).join(', ')
   const cover = !song.hasArt
     ? ''
@@ -121,10 +137,12 @@ const songCells = (song, now, {showArt, roll}) => {
       : `<td valign="top">${viewLink(label, roll)}</td>\n`
   return (
     '<tr>\n' +
-    (cover && cover + `<td width="${ART_GAP}"></td>\n`) +
-    `<td valign="top"><small>${when}</small><br>\n<cite>${esc(song.title)}</cite>` +
+    `<td valign="top" align="right"><small>${when}</small><br>\n<cite>${esc(song.title)}</cite>` +
     (song.artist ? `<br>\n<small>${esc(song.artist)}</small>` : '') +
-    '</td>\n</tr>\n'
+    (playing ? `<br>\n${progressBar(song, now, accent)}` : '') +
+    '</td>\n' +
+    (cover && `<td width="${ART_GAP}"></td>\n` + cover) +
+    '</tr>\n'
   )
 }
 
@@ -137,7 +155,14 @@ async function homepage(res, env, {showArt = false, roll = null} = {}) {
   if (roll === null) roll = Math.floor(Math.random() * 1_000_000)
   let pick = 0
   let seen = 0
+  let accent = ''
   const out = new HTMLRewriter()
+    // the site's accent colour is the body's link colour (set in build.mjs), so it isn't repeated here
+    .on('body', {
+      element(el) {
+        accent = el.getAttribute('link') || ''
+      }
+    })
     .on('[data-reviews]', {
       element(el) {
         pick = roll % (Number(el.getAttribute('data-reviews')) || 1)
@@ -151,7 +176,7 @@ async function homepage(res, env, {showArt = false, roll = null} = {}) {
     })
     .on('#now-playing', {
       element(el) {
-        if (song) el.setInnerContent('\n' + songCells(song, now, {showArt, roll}), {html: true})
+        if (song) el.setInnerContent('\n' + songCells(song, now, {showArt, roll, accent}), {html: true})
       }
     })
     .transform(res)

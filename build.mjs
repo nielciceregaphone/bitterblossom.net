@@ -363,7 +363,7 @@ const randomReview = () =>
 // way to sit beside the site name without css). the worker swaps the cells for the real song, cover included
 const nowPlaying =
   '<table align="right" role="presentation" id="now-playing" cellspacing="0" cellpadding="0">\n' +
-  '<tr><td><small>last played</small><br>\nnothing yet</td></tr>\n' +
+  '<tr><td align="right"><small>last played</small><br>\nnothing yet</td></tr>\n' +
   '</table>\n'
 
 // free-standing pages: src/pages/<slug>.md -> /<slug>/, except index which is the homepage
