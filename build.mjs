@@ -257,16 +257,23 @@ const niche = readDir(`${SRC}/niche`)
 // "2003 · Naughty Dog", either half optional
 const byline = (n) => [n.year, n.by && htmlesc(n.by)].filter(Boolean).join(' &middot; ')
 
-// small spots (the shelf, the homepage) use public/assets/niche/thumbs/<name> when there is one: 128px wide,
-// about 8kB instead of ~65kB. no thumb yet (a new review) means the full cover, which still works, just heavier
-const thumbOf = (src) => {
-  const thumb = src.replace(/^\/assets\/niche\/([^/]+)$/, '/assets/niche/thumbs/$1')
-  return thumb !== src && fs.existsSync(`public${thumb}`) ? thumb : src
+// small spots use a smaller copy from public/assets/niche/ when there is one:
+// - thumbs/<name>, 128px wide (~8kB): the /niche/ shelf, sharp on phones
+// - thumbs64/<name>, 64px wide (~3kB): the homepage, a bit soft on phones but keeps the page near 14kB
+// a missing copy (a new review) falls back to the next bigger one, then the full cover: still works, just heavier
+const thumbOf = (src, dirs) => {
+  for (const dir of dirs) {
+    const thumb = src.replace(/^\/assets\/niche\/([^/]+)$/, `/assets/niche/${dir}/$1`)
+    if (thumb !== src && fs.existsSync(`public${thumb}`)) return thumb
+  }
+  return src
 }
+// 64 is the homepage, 48 the shelf, 160 a review page (full cover)
+const thumbDirs = (width) => (width >= 100 ? [] : width === 64 ? ['thumbs64', 'thumbs'] : ['thumbs'])
 
 const coverImg = (n, width) =>
   n.cover
-    ? `<img src="${width < 100 ? thumbOf(n.cover) : n.cover}" width="${width}" alt="${width < 100 ? '' : `${htmlesc(n.title)} cover art`}" loading="lazy">`
+    ? `<img src="${thumbOf(n.cover, thumbDirs(width))}" width="${width}" alt="${width < 100 ? '' : `${htmlesc(n.title)} cover art`}" loading="lazy">`
     : ''
 
 if (niche.length) {
