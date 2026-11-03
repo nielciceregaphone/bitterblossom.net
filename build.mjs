@@ -13,6 +13,8 @@ const SITE_DESC = "madeline's blog"
 // the site's one colour, for the two lines and every link (visited too): the logo's periwinkle, a touch deeper so
 // it shows on both the light and the dark background (about 3.4:1 on white, 5.5:1 on dark)
 const ACCENT = '#7f86d0'
+// the filled stars in a rating (the empty ones stay plain): the logo's pink, deepened the same way
+const STAR_COLOR = '#e0559a'
 const IMG_WIDTH = 340 // widest photo that still fits a 360px phone next to the default body margin
 const SRC = 'src'
 const DIST = 'dist'
@@ -85,12 +87,14 @@ const num = (n) => n.toLocaleString('en-US')
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
 const monthName = (m) => MONTHS[Number(m) - 1]
 
-// rating out of 5 -> text stars, rounded to the nearest half
+// rating out of 5 -> text stars, rounded to the nearest half. the filled part (★ and ½) is coloured with the
+// old <font color>, the empty ☆ stay the text colour
 const stars = (rating) => {
   const halves = Math.min(10, Math.max(0, Math.round((parseFloat(rating) || 0) * 2)))
   const full = Math.floor(halves / 2)
   const half = halves % 2
-  return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(5 - full - half)
+  const filled = '★'.repeat(full) + (half ? '½' : '')
+  return (filled && `<font color="${STAR_COLOR}">${filled}</font>`) + '☆'.repeat(5 - full - half)
 }
 
 // --- headings ---
