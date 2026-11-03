@@ -10,7 +10,9 @@
   <link rel="icon" type="image/png" href="/assets/web/favicon.png">
   <link rel="alternate" type="application/rss+xml" title="madeline's blog" href="/feed.xml">
 @HEAD@</head>
-<body>
+<!-- marginwidth (the old html page margin, left and right) is 21px so the logo sits as far from the left edge as
+     the h1 puts it from the top -->
+<body marginwidth="21">
 <!-- the old html way to pick a font: the whole page sits inside one <font>, closed in footer.html.
      code and pre keep their monospace because the browser sets that on them directly -->
 <font face="Times New Roman, Times, serif">
@@ -26,8 +28,9 @@
     </nav>
   </blockquote>
 </header>
-<hr>
 <!-- a blockquote is the plain html way to indent: everything under the header sits a little to the right.
-     role="none" so screen readers don't announce it as a quote -->
+     role="none" so screen readers don't announce it as a quote. the line is inside it so it's as long as the
+     one above the footer -->
 <blockquote role="none">
+<hr>
 <main>
