@@ -2,7 +2,7 @@
 // only the homepage and /art/* come through here (run_worker_first in wrangler.jsonc). visitors still get plain html.
 //
 // - fetch /: keep one random nichepost and fill in the last played song in the header. the cover art waits behind
-//   a "view" button (a plain form, no js) so the page stays small; it reloads the homepage as /?n=<pick>&art=1
+//   a "view" link so the page stays small; it reloads the homepage as /?n=<pick>&art=1
 // - fetch /art/<id>: the last played song's cover, kept in KV so the page never links to navidrome itself
 // - scheduled (every minute): ask navidrome what's playing; when the song changes, save it and its cover
 //
@@ -99,14 +99,13 @@ const ago = (ms) => {
   return `${days} day${days === 1 ? '' : 's'} ago`
 }
 
-// a blank ART_BOX square with a "view" button where the cover goes. it's a get form back to the homepage:
+// a blank ART_BOX square with a "view" link where the cover goes. it goes back to the homepage:
 // art=1 shows the cover, n keeps the same random nichepost on the reload
-const viewButton = (label, roll) =>
+const viewLink = (label, roll) =>
   '<table border="1" cellspacing="0" cellpadding="0" role="presentation"><tr>' +
   // the table's border and the cell's border take 2px a side, so the square comes out ART_BOX wide
   `<td width="${ART_BOX - 4}" height="${ART_BOX - 4}" align="center" valign="middle">` +
-  `<form action="/"><input type="hidden" name="n" value="${roll}">` +
-  `<button name="art" value="1" title="show the cover: ${esc(label)}">view</button></form>` +
+  `<a href="/?n=${roll}&amp;art=1" title="show the cover: ${esc(label)}">view</a>` +
   '</td></tr></table>'
 
 // the header box: cover on the left, then "playing now" or how long ago, the title and the artist
@@ -118,7 +117,7 @@ const songCells = (song, now, {showArt, roll}) => {
     ? ''
     : showArt
       ? `<td valign="top"><img src="/art/${encodeURIComponent(song.cover)}" width="${ART_BOX}" height="${ART_BOX}" alt="" title="${esc(label)}"></td>\n`
-      : `<td valign="top">${viewButton(label, roll)}</td>\n`
+      : `<td valign="top">${viewLink(label, roll)}</td>\n`
   return (
     '<tr>\n' +
     cover +
@@ -128,9 +127,9 @@ const songCells = (song, now, {showArt, roll}) => {
   )
 }
 
-// opts.showArt: the view button was pressed. opts.roll: the nichepost dice roll to reuse, or null for a fresh one.
-// the roll is a big number taken modulo the review count, because the song box (and its button, which has to
-// carry the roll) comes before the reviews in the page, so the count isn't known yet when the button is written
+// opts.showArt: the view link was clicked. opts.roll: the nichepost dice roll to reuse, or null for a fresh one.
+// the roll is a big number taken modulo the review count, because the song box (and its link, which has to
+// carry the roll) comes before the reviews in the page, so the count isn't known yet when the link is written
 async function homepage(res, env, {showArt = false, roll = null} = {}) {
   const song = await env.TRACKS.get(SONG_KEY, 'json').catch(() => null)
   const now = Date.now()
@@ -175,7 +174,7 @@ export default {
     const url = new URL(request.url)
     const {pathname, searchParams} = url
     if (pathname.startsWith('/art/')) return art(decodeURIComponent(pathname.slice(5)), env)
-    // the view button's ?n=..&art=1 is only for the worker, the asset store gets the bare path
+    // the view link's ?n=..&art=1 is only for the worker, the asset store gets the bare path
     const bare = url.search ? new Request(url.origin + pathname, request) : request
     const res = await env.ASSETS.fetch(bare)
     const html = (res.headers.get('content-type') || '').includes('text/html')
