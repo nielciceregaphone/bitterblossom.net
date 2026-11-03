@@ -191,7 +191,7 @@ const navItems = (current) =>
 
 // --- templates ---
 
-const vars = {'@TAGLINE@': htmlesc(SITE_DESC), '@ACCENT@': ACCENT, '@BACKGROUND@': BACKGROUND, '@TEXT@': TEXT}
+const vars = {'@TAGLINE@': htmlesc(SITE_DESC), '@ACCENT@': ACCENT, '@STAR@': STAR_COLOR, '@BACKGROUND@': BACKGROUND, '@TEXT@': TEXT}
 // the <!-- notes --> in the templates are for whoever edits them, so they're dropped (with their indent and
 // line) instead of going out on every page. posts are left alone
 const template = (name) =>
