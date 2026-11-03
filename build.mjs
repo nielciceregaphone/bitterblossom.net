@@ -182,7 +182,13 @@ const navItems = (current) =>
 // --- templates ---
 
 const vars = {'@TAGLINE@': htmlesc(SITE_DESC)}
-const template = (name) => fs.readFileSync(`${SRC}/templates/${name}.html`, 'utf8').replace(/\n?$/, '\n')
+// the <!-- notes --> in the templates are for whoever edits them, so they're dropped (with their indent and
+// line) instead of going out on every page. posts are left alone
+const template = (name) =>
+  fs
+    .readFileSync(`${SRC}/templates/${name}.html`, 'utf8')
+    .replace(/[ \t]*<!--[\s\S]*?-->[ \t]*\n?/g, '')
+    .replace(/\n?$/, '\n')
 const header = template('header')
 const footer = template('footer')
 // replacement functions so a `$` in a title is never read as a special pattern
