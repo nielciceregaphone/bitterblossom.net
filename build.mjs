@@ -16,8 +16,9 @@ const BACKGROUND = '#121212'
 const TEXT = '#ffffff'
 // the two lines and every link, visited too: the logo's periwinkle (5.5:1 on the background)
 const ACCENT = '#7f86d0'
-// the filled stars in a rating (the empty ones stay plain): the logo's pink (5.3:1)
-const STAR_COLOR = '#e0559a'
+// the filled stars in a rating (the empty ones stay plain) and the played part of the song progress bar:
+// the logo's pink (5.3:1)
+const HIGHLIGHT = '#e0559a'
 const IMG_WIDTH = 340 // widest photo that still fits a 360px phone next to the default body margin
 const SRC = 'src'
 const DIST = 'dist'
@@ -97,7 +98,7 @@ const stars = (rating) => {
   const full = Math.floor(halves / 2)
   const half = halves % 2
   const filled = '★'.repeat(full) + (half ? '½' : '')
-  return (filled && `<font color="${STAR_COLOR}">${filled}</font>`) + '☆'.repeat(5 - full - half)
+  return (filled && `<font color="${HIGHLIGHT}">${filled}</font>`) + '☆'.repeat(5 - full - half)
 }
 
 // --- headings ---
@@ -191,7 +192,7 @@ const navItems = (current) =>
 
 // --- templates ---
 
-const vars = {'@TAGLINE@': htmlesc(SITE_DESC), '@ACCENT@': ACCENT, '@STAR@': STAR_COLOR, '@BACKGROUND@': BACKGROUND, '@TEXT@': TEXT}
+const vars = {'@TAGLINE@': htmlesc(SITE_DESC), '@ACCENT@': ACCENT, '@HIGHLIGHT@': HIGHLIGHT, '@BACKGROUND@': BACKGROUND, '@TEXT@': TEXT}
 // the <!-- notes --> in the templates are for whoever edits them, so they're dropped (with their indent and
 // line) instead of going out on every page. posts are left alone
 const template = (name) =>
@@ -362,7 +363,8 @@ const randomReview = () =>
 // the newest song, floated to the right of the header with the old `align="right"` table trick (the only
 // way to sit beside the site name without css). the worker swaps the cells for the real song, cover included
 const nowPlaying =
-  '<table align="right" role="presentation" id="now-playing" cellspacing="0" cellpadding="0">\n' +
+  // data-bar is the progress bar colour for the worker, which takes it off again
+  `<table align="right" role="presentation" id="now-playing" cellspacing="0" cellpadding="0" data-bar="${HIGHLIGHT}">\n` +
   '<tr><td align="right"><small>last played</small><br>\nnothing yet</td></tr>\n' +
   '</table>\n'
 
