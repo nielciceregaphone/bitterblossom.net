@@ -20,17 +20,18 @@
 @ASIDE@  <!-- the logo and the name are separate links so the underline sits under the name only, not the gap.
        align="middle" because html has no other way to centre text beside an image -->
   <h1><a href="/" tabindex="-1" aria-hidden="true"><img src="/assets/web/favicon.png" width="64" height="64" alt="" title="hi :3" align="middle"></a> <a href="/">bitterblossom.net</a></h1>
-  <!-- the tagline and nav line up with the indented page below; the name stays at the edge -->
-  <blockquote role="none">
+  <!-- everything under the name starts where the name does: 72px in, the 64px logo plus the 8px space after it.
+       plain html has no free indent, so it's the old empty-cell table trick (a blockquote only moves 40px, and
+       eats 40px on the right too). role="presentation": it's layout, not a table of data -->
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td width="72"></td><td valign="top">
     <p>@TAGLINE@</p>
     <nav aria-label="site">
       <p>@NAV@</p>
     </nav>
-  </blockquote>
+  </td></tr></table>
 </header>
-<!-- a blockquote is the plain html way to indent: everything under the header sits a little to the right.
-     role="none" so screen readers don't announce it as a quote. the line is inside it so it's as long as the
+<!-- the same 72px for the page; the table closes in footer.html. the line is inside it so it's as long as the
      one above the footer -->
-<blockquote role="none">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td width="72"></td><td valign="top">
 <hr>
 <main>
