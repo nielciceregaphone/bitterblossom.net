@@ -11,8 +11,8 @@ import {gfmTaskListItem, gfmTaskListItemHtml} from 'micromark-extension-gfm-task
 const BASE_URL = 'https://bitterblossom.net'
 const SITE_DESC = "madeline's blog"
 // the colour of the two lines (the old hr color attribute): the logo's periwinkle, a touch deeper so it shows
-// on both the light and the dark background (about 3.5:1 on white, 5:1 on dark)
-const LINE_COLOR = '#8a80c8'
+// on both the light and the dark background (about 3.4:1 on white, 5.5:1 on dark)
+const LINE_COLOR = '#7f86d0'
 const IMG_WIDTH = 340 // widest photo that still fits a 360px phone next to the default body margin
 const SRC = 'src'
 const DIST = 'dist'
