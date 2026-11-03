@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="dark">
   <title>@TITLE@</title>
   <meta name="description" content="@DESCRIPTION@">
   <link rel="canonical" href="@CANONICAL@">
@@ -11,9 +11,9 @@
   <link rel="alternate" type="application/rss+xml" title="madeline's blog" href="/feed.xml">
 @HEAD@</head>
 <!-- marginwidth (the old html page margin, left and right) is 21px so the logo sits as far from the left edge as
-     the h1 puts it from the top. link, vlink and alink are the old html link colours: all links, visited or
-     not, in the accent colour -->
-<body marginwidth="21" link="@ACCENT@" vlink="@ACCENT@" alink="@ACCENT@">
+     the h1 puts it from the top. bgcolor, text, link, vlink and alink are the old html page colours (set in
+     build.mjs): the site is dark only, and color-scheme above makes buttons and scrollbars dark to match -->
+<body marginwidth="21" bgcolor="@BACKGROUND@" text="@TEXT@" link="@ACCENT@" vlink="@ACCENT@" alink="@ACCENT@">
 <!-- the old html way to pick a font: the whole page sits inside one <font>, closed in footer.html.
      code and pre keep their monospace because the browser sets that on them directly -->
 <font face="Times New Roman, Times, serif">

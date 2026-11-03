@@ -10,10 +10,13 @@ import {gfmTaskListItem, gfmTaskListItemHtml} from 'micromark-extension-gfm-task
 
 const BASE_URL = 'https://bitterblossom.net'
 const SITE_DESC = "madeline's blog"
-// the site's one colour, for the two lines and every link (visited too): the logo's periwinkle, a touch deeper so
-// it shows on both the light and the dark background (about 3.4:1 on white, 5.5:1 on dark)
+// the site's four colours. dark only: the old body bgcolor/text pin the page so every browser shows the same
+// thing (left alone, each picks its own dark grey)
+const BACKGROUND = '#121212'
+const TEXT = '#ffffff'
+// the two lines and every link, visited too: the logo's periwinkle (5.5:1 on the background)
 const ACCENT = '#7f86d0'
-// the filled stars in a rating (the empty ones stay plain): the logo's pink, deepened the same way
+// the filled stars in a rating (the empty ones stay plain): the logo's pink (5.3:1)
 const STAR_COLOR = '#e0559a'
 const IMG_WIDTH = 340 // widest photo that still fits a 360px phone next to the default body margin
 const SRC = 'src'
@@ -188,7 +191,7 @@ const navItems = (current) =>
 
 // --- templates ---
 
-const vars = {'@TAGLINE@': htmlesc(SITE_DESC), '@ACCENT@': ACCENT}
+const vars = {'@TAGLINE@': htmlesc(SITE_DESC), '@ACCENT@': ACCENT, '@BACKGROUND@': BACKGROUND, '@TEXT@': TEXT}
 // the <!-- notes --> in the templates are for whoever edits them, so they're dropped (with their indent and
 // line) instead of going out on every page. posts are left alone
 const template = (name) =>
