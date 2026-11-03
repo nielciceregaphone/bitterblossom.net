@@ -257,8 +257,17 @@ const niche = readDir(`${SRC}/niche`)
 // "2003 · Naughty Dog", either half optional
 const byline = (n) => [n.year, n.by && htmlesc(n.by)].filter(Boolean).join(' &middot; ')
 
+// small spots (the shelf, the homepage) use public/assets/niche/thumbs/<name> when there is one: 128px wide,
+// about 8kB instead of ~65kB. no thumb yet (a new review) means the full cover, which still works, just heavier
+const thumbOf = (src) => {
+  const thumb = src.replace(/^\/assets\/niche\/([^/]+)$/, '/assets/niche/thumbs/$1')
+  return thumb !== src && fs.existsSync(`public${thumb}`) ? thumb : src
+}
+
 const coverImg = (n, width) =>
-  n.cover ? `<img src="${n.cover}" width="${width}" alt="${width < 100 ? '' : `${htmlesc(n.title)} cover art`}" loading="lazy">` : ''
+  n.cover
+    ? `<img src="${width < 100 ? thumbOf(n.cover) : n.cover}" width="${width}" alt="${width < 100 ? '' : `${htmlesc(n.title)} cover art`}" loading="lazy">`
+    : ''
 
 if (niche.length) {
   let shelf = '<h2>niche</h2>\n'
