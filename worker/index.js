@@ -11,7 +11,8 @@
 
 const SONG_KEY = 'last-song'
 const ART_KEY = 'last-song-art'
-const ART_SIZE = 96 // fetched at 2x, shown at 48 so it stays sharp on phones
+const ART_SIZE = 108 // fetched at 2x, shown at 54 so it stays sharp on phones
+const ART_BOX = 54 // as tall as the three lines of text beside it
 
 const esc = (s) =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -98,11 +99,12 @@ const ago = (ms) => {
   return `${days} day${days === 1 ? '' : 's'} ago`
 }
 
-// a blank 48px square with a "view" button where the cover goes. it's a get form back to the homepage:
+// a blank ART_BOX square with a "view" button where the cover goes. it's a get form back to the homepage:
 // art=1 shows the cover, n keeps the same random nichepost on the reload
 const viewButton = (label, roll) =>
   '<table border="1" cellspacing="0" cellpadding="0" role="presentation"><tr>' +
-  '<td width="46" height="46" align="center" valign="middle">' +
+  // the table's border and the cell's border take 2px a side, so the square comes out ART_BOX wide
+  `<td width="${ART_BOX - 4}" height="${ART_BOX - 4}" align="center" valign="middle">` +
   `<form action="/"><input type="hidden" name="n" value="${roll}">` +
   `<button name="art" value="1" title="show the cover: ${esc(label)}">view</button></form>` +
   '</td></tr></table>'
@@ -115,7 +117,7 @@ const songCells = (song, now, {showArt, roll}) => {
   const cover = !song.hasArt
     ? ''
     : showArt
-      ? `<td valign="top"><img src="/art/${encodeURIComponent(song.cover)}" width="48" height="48" alt="" title="${esc(label)}"></td>\n`
+      ? `<td valign="top"><img src="/art/${encodeURIComponent(song.cover)}" width="${ART_BOX}" height="${ART_BOX}" alt="" title="${esc(label)}"></td>\n`
       : `<td valign="top">${viewButton(label, roll)}</td>\n`
   return (
     '<tr>\n' +
