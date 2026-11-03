@@ -1,7 +1,8 @@
 // bitterblossom.net worker. every page is a static file from dist/, served straight from the asset store;
 // only the homepage and /art/* come through here (run_worker_first in wrangler.jsonc). visitors still get plain html.
 //
-// - fetch /: keep one random nichepost and fill in the last played song (cover art included) in the header
+// - fetch /: keep one random nichepost and fill in the last played song in the header. the cover art waits behind
+//   a "view" button (a plain form, no js) so the page stays small; it reloads the homepage as /?n=<pick>&art=1
 // - fetch /art/<id>: the last played song's cover, kept in KV so the page never links to navidrome itself
 // - scheduled (every minute): ask navidrome what's playing; when the song changes, save it and its cover
 //
@@ -97,14 +98,25 @@ const ago = (ms) => {
   return `${days} day${days === 1 ? '' : 's'} ago`
 }
 
+// a blank 48px square with a "view" button where the cover goes. it's a get form back to the homepage:
+// art=1 shows the cover, n keeps the same random nichepost on the reload
+const viewButton = (label, roll) =>
+  '<table border="1" cellspacing="0" cellpadding="0" role="presentation"><tr>' +
+  '<td width="46" height="46" align="center" valign="middle">' +
+  `<form action="/"><input type="hidden" name="n" value="${roll}">` +
+  `<button name="art" value="1" title="show the cover: ${esc(label)}">view</button></form>` +
+  '</td></tr></table>'
+
 // the header box: cover on the left, then "playing now" or how long ago, the title and the artist
-const songCells = (song, now) => {
+const songCells = (song, now, {showArt, roll}) => {
   const playing = song.duration && now < song.started + song.duration * 1000
   const when = playing ? 'playing now' : `last played <time datetime="${new Date(song.started).toISOString()}">${ago(now - song.started)}</time>`
   const label = [song.title, song.artist, song.album].filter(Boolean).join(', ')
-  const cover = song.hasArt
-    ? `<td valign="top"><img src="/art/${encodeURIComponent(song.cover)}" width="48" height="48" alt="" title="${esc(label)}"></td>\n`
-    : ''
+  const cover = !song.hasArt
+    ? ''
+    : showArt
+      ? `<td valign="top"><img src="/art/${encodeURIComponent(song.cover)}" width="48" height="48" alt="" title="${esc(label)}"></td>\n`
+      : `<td valign="top">${viewButton(label, roll)}</td>\n`
   return (
     '<tr>\n' +
     cover +
@@ -114,15 +126,19 @@ const songCells = (song, now) => {
   )
 }
 
-async function homepage(res, env) {
+// opts.showArt: the view button was pressed. opts.roll: the nichepost dice roll to reuse, or null for a fresh one.
+// the roll is a big number taken modulo the review count, because the song box (and its button, which has to
+// carry the roll) comes before the reviews in the page, so the count isn't known yet when the button is written
+async function homepage(res, env, {showArt = false, roll = null} = {}) {
   const song = await env.TRACKS.get(SONG_KEY, 'json').catch(() => null)
   const now = Date.now()
+  if (roll === null) roll = Math.floor(Math.random() * 1_000_000)
   let pick = 0
   let seen = 0
   const out = new HTMLRewriter()
     .on('[data-reviews]', {
       element(el) {
-        pick = Math.floor(Math.random() * (Number(el.getAttribute('data-reviews')) || 1))
+        pick = roll % (Number(el.getAttribute('data-reviews')) || 1)
       }
     })
     .on('[data-review]', {
@@ -133,7 +149,7 @@ async function homepage(res, env) {
     })
     .on('#now-playing', {
       element(el) {
-        if (song) el.setInnerContent('\n' + songCells(song, now), {html: true})
+        if (song) el.setInnerContent('\n' + songCells(song, now, {showArt, roll}), {html: true})
       }
     })
     .transform(res)
@@ -154,12 +170,16 @@ async function art(id, env) {
 
 export default {
   async fetch(request, env) {
-    const {pathname} = new URL(request.url)
+    const url = new URL(request.url)
+    const {pathname, searchParams} = url
     if (pathname.startsWith('/art/')) return art(decodeURIComponent(pathname.slice(5)), env)
-    const res = await env.ASSETS.fetch(request)
+    // the view button's ?n=..&art=1 is only for the worker, the asset store gets the bare path
+    const bare = url.search ? new Request(url.origin + pathname, request) : request
+    const res = await env.ASSETS.fetch(bare)
     const html = (res.headers.get('content-type') || '').includes('text/html')
     if (pathname !== '/' || res.status !== 200 || !html) return res
-    return homepage(res, env)
+    const n = searchParams.get('n') || ''
+    return homepage(res, env, {showArt: searchParams.get('art') === '1', roll: /^\d{1,6}$/.test(n) ? Number(n) : null})
   },
 
   async scheduled(event, env, ctx) {
