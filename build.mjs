@@ -192,14 +192,7 @@ const navItems = (current) =>
 
 // --- templates ---
 
-// the two lines (under the header, above the footer), tilted up to the right. a tiny inline svg (no css): it
-// stretches to the width of the page (preserveAspectRatio="none"), and vector-effect keeps the stroke 2px thick
-// however far it's stretched. aria-hidden: it's decoration
-const SLANT =
-  '<svg width="100%" height="24" viewBox="0 0 1000 24" preserveAspectRatio="none" aria-hidden="true">' +
-  `<line x1="0" y1="23" x2="1000" y2="1" stroke="${ACCENT}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`
-
-const vars = {'@TAGLINE@': htmlesc(SITE_DESC), '@ACCENT@': ACCENT, '@HIGHLIGHT@': HIGHLIGHT, '@BACKGROUND@': BACKGROUND, '@TEXT@': TEXT, '@SLANT@': SLANT}
+const vars = {'@TAGLINE@': htmlesc(SITE_DESC), '@ACCENT@': ACCENT, '@HIGHLIGHT@': HIGHLIGHT, '@BACKGROUND@': BACKGROUND, '@TEXT@': TEXT}
 // the <!-- notes --> in the templates are for whoever edits them, so they're dropped (with their indent and
 // line) instead of going out on every page. posts are left alone
 const template = (name) =>
