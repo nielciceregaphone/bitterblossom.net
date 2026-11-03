@@ -11,8 +11,9 @@
 
 const SONG_KEY = 'last-song'
 const ART_KEY = 'last-song-art'
-const ART_SIZE = 108 // fetched at 2x, shown at 54 so it stays sharp on phones
-const ART_BOX = 54 // as tall as the three lines of text beside it
+const ART_SIZE = 128 // fetched at 2x, shown at 64 so it stays sharp on phones
+const ART_BOX = 64 // as big as the logo on the other side of the header
+const ART_GAP = 8 // between the cover and the text, same as between the logo and the name
 
 const esc = (s) =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -120,7 +121,7 @@ const songCells = (song, now, {showArt, roll}) => {
       : `<td valign="top">${viewLink(label, roll)}</td>\n`
   return (
     '<tr>\n' +
-    cover +
+    (cover && cover + `<td width="${ART_GAP}"></td>\n`) +
     `<td valign="top"><small>${when}</small><br>\n<cite>${esc(song.title)}</cite>` +
     (song.artist ? `<br>\n<small>${esc(song.artist)}</small>` : '') +
     '</td>\n</tr>\n'
